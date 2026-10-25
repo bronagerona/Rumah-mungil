@@ -8,7 +8,7 @@ export default function App() {
   const [ctx, setCtx] = useState(null);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState('Pilih model Gemma 3 1B (.gguf). Game baru dibuka setelah AI lolos tes.');
+  const [status, setStatus] = useState('Pilih model model lokal 3 1B (.gguf). Game baru dibuka setelah AI lolos tes.');
   const webRef = useRef(null);
   const inferenceRef = useRef(false);
   const ctxRef = useRef(null);
@@ -40,7 +40,7 @@ export default function App() {
       if (localCopy?.status !== 'success' || !localCopy.localUri) {
         throw new Error(localCopy?.copyError || 'Tidak bisa menyalin file model ke penyimpanan aplikasi.');
       }
-      setStatus('Menyiapkan Gemma di HP…');
+      setStatus('Menyiapkan model lokal di HP…');
       if (ctxRef.current?.release) {
         await ctxRef.current.release();
         ctxRef.current = null;
@@ -65,14 +65,14 @@ export default function App() {
       setCtx(next);
       next = null;
       setReady(true);
-      setStatus('Gemma siap · Gemma membuat komentar Sari · gerak Sari diatur game');
+      setStatus('model lokal siap · Sari dikendalikan AI lokal · Budi dikendalikan pemain');
     } catch (e) {
       const code = String(e?.code || '').toLowerCase();
       if (code.includes('cancel')) {
-        setStatus(ready ? 'Gemma tetap aktif.' : 'Pemilihan model dibatalkan. Pilih file .gguf untuk melanjutkan.');
+        setStatus(ready ? 'model lokal tetap aktif.' : 'Pemilihan model dibatalkan. Pilih file .gguf untuk melanjutkan.');
       } else {
         setStatus('Model belum siap. Periksa file .gguf dan coba lagi.');
-        Alert.alert('Gemma belum siap', String(e?.message || e));
+        Alert.alert('model lokal belum siap', String(e?.message || e));
       }
     } finally {
       if (next?.release) {
@@ -90,7 +90,7 @@ export default function App() {
   async function onGameMessage(event) {
     let message;
     try { message = JSON.parse(event.nativeEvent.data); } catch (_) { return; }
-    if (message?.type !== 'sari_comment_request') return;
+    if (message?.type !== 'sari_decision_request') return;
     if (!ctx || inferenceRef.current) {
       sendDecision({action: null, dialogue: ''});
       return;
@@ -100,21 +100,27 @@ export default function App() {
     try {
       const context = message.context || {};
       const prompt =
-        'Kamu adalah Sari, teman serumah dalam game simulasi kehidupan Rumah Mungil. ' +
-        'Tugasmu HANYA mengucapkan satu komentar pendek dalam bahasa Indonesia berdasarkan kondisi yang diberikan. ' +
-        'Komentar harus alami, terasa spontan, sesuai kebutuhan, aktivitas, waktu, dan kejadian saat ini. ' +
-        'Buat variasi baru dan jangan mengulang komentar terbaru yang tercantum. Panjang 3 sampai 10 kata. ' +
-        'Jangan memberi instruksi, jangan menyebut data atau angka kebutuhan, jangan mengarang kejadian, dan jangan memilih atau menyarankan aksi game. ' +
-        'Balas hanya kalimat komentar, tanpa tanda kutip, label, JSON, atau penjelasan.\nKONDISI SARI: ' + JSON.stringify(context);
+        'Kamu adalah AI pengambil keputusan untuk Sari, karakter dalam game simulasi kehidupan Rumah Mungil. ' +
+        'Budi dikendalikan pemain, jadi jangan pernah mengambil alih Budi. ' +
+        'Pilih tepat satu aksi dari daftar opsi yang diberikan. Pertimbangkan kebutuhan Sari, uang, waktu, lokasi, hubungan, dan permintaan interaksi dari Budi. Sari boleh menerima atau menolak ajakan sesuai kondisinya. ' +
+        'Jangan mengarang aksi di luar daftar. Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"kalimat pendek bahasa Indonesia"}. ' +
+        'Dialog boleh kosong. Jangan sertakan markdown.\nKONDISI: ' + JSON.stringify(context);
       const result = await ctx.completion({
         prompt,
-        n_predict: 40,
-        temperature: 0.85,
-        top_p: 0.9,
+        n_predict: 96,
+        temperature: 0.35,
       });
-      const raw = String(result?.text || '').trim();
-      const line = raw.split(/\\n|[.!?](?:\\s|$)/)[0].replace(/^["'“”*\s]+|["'“”*\s]+$/g, '').trim();
-      sendDecision({dialogue: line.slice(0, 90)});
+      const raw = String(result?.text || '');
+      const start = raw.indexOf('{');
+      const end = raw.lastIndexOf('}');
+      if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
+      const parsed = JSON.parse(raw.slice(start, end + 1));
+      const options = Array.isArray(context.options) ? context.options : [];
+      const action = options.some(item => item.key === parsed.action) ? parsed.action : null;
+      sendDecision({
+        action,
+        dialogue: typeof parsed.dialogue === 'string' ? parsed.dialogue.slice(0, 100) : '',
+      });
     } catch (e) {
       sendDecision({action: null, dialogue: ''});
     } finally {
@@ -148,7 +154,7 @@ export default function App() {
         <View style={styles.loader}>
           {busy ? <ActivityIndicator size="large" color="#365c43" /> : <Text style={styles.emoji}>🏡</Text>}
           <Text style={styles.loaderTitle}>{busy ? 'Menyiapkan teman serumah…' : 'Siapkan AI Sari'}</Text>
-          <Text style={styles.loaderText}>Pilih model Gemma 3 1B GGUF yang tersimpan di HP. Game hanya dibuka setelah model berhasil dimuat dan memberi respons tes. Model tidak dibundel ke APK.</Text>
+          <Text style={styles.loaderText}>Pilih model model lokal 3 1B GGUF yang tersimpan di HP. Game hanya dibuka setelah model berhasil dimuat dan memberi respons tes. Model tidak dibundel ke APK.</Text>
         </View>
       )}
     </SafeAreaView>

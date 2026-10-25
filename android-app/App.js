@@ -93,7 +93,7 @@ export default function App() {
       const prompt =
         'Kamu adalah AI pengambil keputusan untuk Sari, karakter dalam game simulasi kehidupan Rumah Mungil. ' +
         'Budi dikendalikan pemain, jadi jangan pernah mengambil alih Budi. ' +
-        'Pilih tepat satu aksi dari daftar opsi yang diberikan. Pertimbangkan kebutuhan Sari, uang, waktu, lokasi, dan hubungan. ' +
+        'Pilih tepat satu aksi dari daftar opsi yang diberikan. Pertimbangkan kebutuhan Sari, uang, waktu, lokasi, hubungan, dan permintaan interaksi dari Budi. Sari boleh menerima atau menolak ajakan sesuai kondisinya. ' +
         'Jangan mengarang aksi di luar daftar. Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"kalimat pendek bahasa Indonesia"}. ' +
         'Dialog boleh kosong. Jangan sertakan markdown.\nKONDISI: ' + JSON.stringify(context);
       const result = await ctx.completion({

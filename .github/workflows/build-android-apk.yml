@@ -38,7 +38,7 @@ jobs:
         run: npx --yes @react-native-community/cli@20 init RumahMungilNative --version 0.87.1 --skip-install
       - name: Install app dependencies
         working-directory: RumahMungilNative
-        run: npm install && npm install llama.rn@0.13.0-rc.7 react-native-document-picker@9.3.1 react-native-webview@13.16.1
+        run: npm install && npm install llama.rn@0.13.0-rc.7 @react-native-documents/picker@10.1.5 react-native-webview@13.16.1
       - name: Copy game and app source
         run: |
           cp android-app/App.js RumahMungilNative/App.tsx

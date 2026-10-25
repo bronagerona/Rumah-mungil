@@ -11,12 +11,17 @@ export default function App() {
   const [status, setStatus] = useState('Pilih model Gemma 3 1B (.gguf). Game baru dibuka setelah AI lolos tes.');
   const webRef = useRef(null);
   const inferenceRef = useRef(false);
+  const ctxRef = useRef(null);
 
   useEffect(() => () => {
-    if (ctx?.release) ctx.release();
-  }, [ctx]);
+    if (ctxRef.current?.release) ctxRef.current.release();
+  }, []);
 
   async function loadModel() {
+    if (inferenceRef.current) {
+      Alert.alert('AI sedang berpikir', 'Tunggu Sari menyelesaikan keputusan sebelum mengganti model.');
+      return;
+    }
     let next = null;
     try {
       setBusy(true);
@@ -27,7 +32,10 @@ export default function App() {
         return;
       }
       setStatus('Menyiapkan Gemma di HP…');
-      if (ctx?.release) await ctx.release();
+      if (ctxRef.current?.release) {
+        await ctxRef.current.release();
+        ctxRef.current = null;
+      }
       setCtx(null);
       setReady(false);
       next = await initLlama({
@@ -44,6 +52,7 @@ export default function App() {
         temperature: 0,
       });
       if (!probe?.text?.trim()) throw new Error('Model tidak menghasilkan respons pada tes awal.');
+      ctxRef.current = next;
       setCtx(next);
       next = null;
       setReady(true);

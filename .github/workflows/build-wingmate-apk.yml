@@ -1,0 +1,57 @@
+name: Build PROJECT WINGMATE Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - shooter-rpg-smollm
+    paths:
+      - "wingmate/**"
+      - "wingmate-android/**"
+      - ".github/workflows/build-wingmate-apk.yml"
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Verify Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          test -d "$ANDROID_HOME/platform-tools"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+      - name: Generate native Android project
+        run: npx --yes @react-native-community/cli@20 init WingmateNative --version 0.87.1 --skip-install
+      - name: Install dependencies
+        working-directory: WingmateNative
+        run: npm install && npm install llama.rn@0.13.0-rc.7 @react-native-documents/picker@12.0.3 react-native-webview@13.16.1
+      - name: Copy Wingmate app and game assets
+        run: |
+          cp wingmate-android/App.js WingmateNative/App.tsx
+          mkdir -p WingmateNative/android/app/src/main/assets
+          cp wingmate/index.html WingmateNative/android/app/src/main/assets/index.html
+          cp wingmate/smollm-adapter.js WingmateNative/android/app/src/main/assets/smollm-adapter.js
+      - name: Bundle JavaScript
+        working-directory: WingmateNative
+        run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+      - name: Build debug APK
+        working-directory: WingmateNative/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-wingmate-debug-apk
+          path: WingmateNative/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

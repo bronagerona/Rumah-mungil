@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rumah Mungil</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e4eaf7;--panel:#fff;--ink:#1b2340;--mut:#5d6788;--line:#c9d2e8;--acc:#2f6bff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121830;--panel:#1d2644;--ink:#eaeefc;--mut:#9aa6cc;--line:#2f3a64;--acc:#6f95ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121830;--panel:#1d2644;--ink:#eaeefc;--mut:#9aa6cc;--line:#2f3a64;--acc:#6f95ff;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Baloo 2","Trebuchet MS",system-ui,sans-serif;font-weight:500;-webkit-tap-highlight-color:transparent}
+.app{max-width:480px;margin:0 auto;padding:10px 12px 24px}
+.top,.info{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px}
+.top h1{font-size:20px;margin:0;font-weight:700}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:14px;color:var(--ink);font-family:inherit}
+button.chip{cursor:pointer;font-weight:700;color:var(--acc)}
+button.chip.off{opacity:.45}
+.row{display:flex;gap:6px}
+.room{position:relative;container-type:inline-size;aspect-ratio:1/1.1;border-radius:18px;overflow:hidden;background:#a5b6e3;border:1px solid var(--line)}
+.wall{position:absolute;inset:0 0 auto 0;height:26%;background:linear-gradient(#bccaef,#a5b6e3)}
+.win{position:absolute;left:33%;top:4%;width:34%;height:16%;border-radius:1.5cqw;background:linear-gradient(#8fd0ff,#d7f0ff);border:1.2cqw solid #f4f6ff}
+.floor{position:absolute;inset:26% 0 0 0;background:repeating-linear-gradient(90deg,#d9b88a 0 11cqw,#cfae7f 11cqw 11.5cqw)}
+.rug{position:absolute;left:26%;top:46%;width:48%;height:22%;border-radius:50%;background:#7d6bd6;opacity:.35}
+.ob{position:absolute;transform:translate(-50%,-50%);background:none;border:0;padding:0;margin:0;display:flex;flex-direction:column;align-items:center;font-size:10.5cqw;line-height:1;cursor:pointer;font-family:inherit;z-index:2}
+.ob span{font-size:3.2cqw;font-weight:700;background:rgba(255,255,255,.88);color:#1b2340;border-radius:99px;padding:0 2cqw;margin-top:.5cqw;white-space:nowrap}
+.ob:active{transform:translate(-50%,-50%) scale(.93)}
+.ob:focus-visible,.tab:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:10px}
+.ob.on{filter:drop-shadow(0 0 2cqw #fff)}
+.me{position:absolute;transform:translate(-50%,-50%);width:11cqw;height:11cqw;border-radius:50%;display:grid;place-items:center;font-size:7.5cqw;z-index:5;box-shadow:0 1.2cqw 0 rgba(0,0,0,.16);transition:left var(--d,1s) linear,top var(--d,1s) linear;cursor:pointer}
+.me.sel{outline:.9cqw solid #fff}
+.me.f::after{content:'🎀';position:absolute;left:-1.5cqw;top:-2cqw;font-size:4.5cqw}
+.me.walk .face{animation:hop .28s infinite alternate}
+.nm{position:absolute;top:100%;left:50%;transform:translateX(-50%);font-size:3.2cqw;font-weight:700;color:#1b2340;background:rgba(255,255,255,.85);border-radius:99px;padding:0 1.6cqw;margin-top:.6cqw}
+.pb{position:absolute;left:50%;top:-7cqw;width:4cqw;height:6cqw;transform:translateX(-50%);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--pb,#3ddc84);animation:fl 1.6s ease-in-out infinite alternate;transition:background .6s}
+.bub{position:absolute;left:50%;bottom:118%;transform:translateX(-50%);white-space:nowrap;background:#fff;color:#1b2340;font-size:3.4cqw;font-weight:700;padding:.6cqw 2.2cqw;border-radius:99px;opacity:0;transition:opacity .2s;pointer-events:none}
+.bub.show{opacity:1}
+.night{position:absolute;inset:0;background:#0b1240;opacity:0;pointer-events:none;z-index:8;transition:opacity 1s}
+@keyframes hop{to{transform:translateY(-1.2cqw)}}
+@keyframes fl{to{transform:translateX(-50%) translateY(1.4cqw)}}
+@media(prefers-reduced-motion:reduce){.pb,.me .face{animation:none!important}}
+.tabs{display:flex;gap:6px;margin:10px 0 6px}
+.tab{flex:1;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:4px;font:inherit;font-weight:700;color:var(--mut);cursor:pointer}
+.tab.on{border-color:var(--acc);color:var(--ink)}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-size:15px;margin-bottom:6px}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:0;background:var(--acc)}
+.needs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.nd{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 4px 8px;text-align:center;font-size:13px;color:var(--mut)}
+.nd .v{height:46px;width:12px;margin:4px auto 0;border-radius:99px;background:var(--line);position:relative;overflow:hidden}
+.nd .v i{position:absolute;left:0;right:0;bottom:0;height:50%;transition:height .3s,background .3s}
+.evt{position:absolute;left:4%;right:4%;top:2%;z-index:9;background:rgba(255,255,255,.95);color:#1b2340;border-radius:12px;padding:1cqw 3cqw;font-size:3.5cqw;font-weight:700;text-align:center;opacity:0;transition:opacity .3s;pointer-events:none}
+.evt.show{opacity:1}
+.pet{position:absolute;left:30%;top:66%;transform:translate(-50%,-50%);font-size:7cqw;line-height:1;z-index:4;cursor:pointer;transition:left 2.5s linear,top 2.5s linear}
+.room.gd .wall{background:linear-gradient(#8fd0ff,#c9ecff)}
+.room.gd .floor{background:repeating-linear-gradient(90deg,#6dbb5a 0 11cqw,#62ae50 11cqw 11.5cqw)}
+.room.gd .win,.room.gd .rug{display:none}
+.face{width:100%;height:100%;display:grid;place-items:center;border-radius:50%;background-size:cover;background-position:center}
+.emo{position:absolute;right:-3.4cqw;top:-1.8cqw;font-size:3.6cqw;line-height:1;background:rgba(255,255,255,.93);border-radius:50%;padding:.5cqw;box-shadow:0 .3cqw .8cqw rgba(0,0,0,.25);pointer-events:none}
+.pet.ci{width:10cqw;height:10cqw;border-radius:50%;font-size:0;background:#cfe8d5;box-shadow:0 1cqw 0 rgba(0,0,0,.16)}
+.nbr .nm{white-space:nowrap}
+.nbr{position:absolute;left:50%;top:96%;transform:translate(-50%,-50%);font-size:7.5cqw;line-height:1;z-index:4;cursor:pointer;display:none;transition:left 3s linear,top 3s linear}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.shop{display:none;margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:14px}
+.shop.open{display:block}
+.shop h2{font-size:16px;margin:0 0 6px}
+.it{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.it small{display:block;color:var(--mut)}
+.it button{font:inherit;font-weight:700;border:0;border-radius:99px;padding:3px 12px;background:var(--acc);color:#fff;cursor:pointer;white-space:nowrap}
+.it button:disabled{background:var(--line);color:var(--mut);cursor:default}
+.foot{display:flex;justify-content:space-between;margin-top:10px;font-size:13px;color:var(--mut)}
+.foot button{background:none;border:0;color:var(--mut);text-decoration:underline;font:inherit;cursor:pointer}
+@media (orientation:landscape) and (min-width:560px){
+.app{max-width:none;display:grid;grid-template-columns:min(calc((100dvh - 78px)/1.1),52vw) minmax(0,.7fr) minmax(0,1.3fr);column-gap:12px;align-items:start;padding:6px max(12px,env(safe-area-inset-right,0px)) 12px max(12px,env(safe-area-inset-left,0px))}
+.app>*{grid-column:2/4;margin-bottom:6px}
+.app>.top{grid-column:2}
+.app>.info{grid-column:3}
+.app>.vw{grid-column:1;grid-row:1}
+.app>.room{grid-column:1;grid-row:2/span 40;position:sticky;top:6px;margin:0}
+.app>.tabs{grid-column:2;margin:0 0 6px}
+.app>.stat{grid-column:3}
+.top h1{display:none}
+.top{justify-content:flex-end}
+.chip{white-space:nowrap}
+.info{flex-wrap:wrap;justify-content:flex-end}
+.info .row{flex-wrap:wrap;justify-content:flex-end}
+.top,.info{margin-bottom:0}
+.nd{padding:4px 2px 6px;font-size:12px}
+.nd .v{height:24px;margin-top:2px}
+.ob span{font-size:max(3.2cqw,9px)}
+.nm{font-size:max(3.2cqw,8px)}
+.emo{font-size:max(3.6cqw,9px)}
+.bub{font-size:max(3.4cqw,9px)}
+.evt{font-size:max(3.5cqw,9px)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <h1>Rumah Mungil</h1>
+    <div class="row">
+      <button class="chip" id="bm" aria-label="Musik">🎵</button>
+      <button class="chip" id="bs" aria-label="Efek suara">🔊</button>
+      <button class="chip" id="spd" aria-label="Kecepatan">1x</button>
+    </div>
+  </div>
+  <div class="info">
+    <span class="chip" id="clock">Hari 1 · 07:00</span>
+    <span class="row"><span class="chip" id="money">Rp 100rb</span><button class="chip" id="bshop">🛍️ Toko</button></span>
+  </div>
+  <div class="vw" style="display:flex;gap:6px;margin-bottom:8px"><button class="tab vb on" id="vb0">🏠 Rumah</button><button class="tab vb" id="vb1" style="display:none">🌳 Taman</button></div>
+  <div class="room" id="room">
+    <div class="wall"></div><div class="win"></div><div class="floor"></div><div class="rug"></div>
+    <div class="night" id="night"></div><div class="evt" id="evt"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="stat"><span id="act">Santai</span><div class="bar"><i id="prog"></i></div><div id="rel" style="font-size:13px;color:var(--mut);margin-top:6px"></div></div>
+  <div class="acts"><button class="chip" id="ba">Auto</button><button class="chip" id="bg">💬 Sapa</button><button class="chip" id="bh">🎁 Hadiah Rp10rb</button><button class="chip" id="bt">🛋️ Ajak ngobrol</button><button class="chip" id="bk">💞 Kencan Rp40rb</button><button class="chip" id="bn">👥 Tetangga</button></div>
+  <div class="acts"><button class="chip" id="bp">📷 Ganti gambar</button></div>
+  <div class="acts" id="pp" style="display:none"></div>
+  <input type="file" accept="image/*" id="pf" hidden>
+  <div class="needs" id="needs"></div>
+  <div class="shop" id="shop"></div>
+  <div class="shop" id="nbp"></div>
+  <div class="foot"><span>Pilih karakter, lalu ketuk benda.</span><button id="dif">Tingkat</button><button id="reset">Ulang</button></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const NAMA={lapar:'Lapar',energi:'Energi',bersih:'Bersih',hibur:'Hibur',sosial:'Sosial'};
+const DECAY={lapar:.08,energi:.06,bersih:.05,hibur:.07,sosial:.04};
+const OB={
+  kulkas:{x:14,y:33,e:'🧊',l:'Kulkas',n:'Makan',m:30,fx:{lapar:2},cost:15,say:'Nyam nyam!'},
+  komputer:{x:50,y:35,e:'💻',l:'Kerja',n:'Kerja online',m:240,fx:{energi:-.08,hibur:-.05},pay:1,say:'Gaji masuk!'},
+  telepon:{x:86,y:33,e:'📱',l:'Telepon',n:'Ngobrol di telepon',m:40,fx:{sosial:1.5},say:'Seru ngobrolnya!'},
+  tv:{x:84,y:61,e:'📺',l:'TV',n:'Nonton TV',m:60,fx:{hibur:.9},say:'Acaranya lucu.'},
+  kasur:{x:17,y:70,e:'🛏️',l:'Kasur',n:'Tidur',m:480,fx:{energi:.22},sleep:1,here:1,say:'Segar lagi!'},
+  shower:{x:84,y:84,e:'🚿',l:'Shower',n:'Mandi',m:20,fx:{bersih:5},say:'Wangi!'},
+  sofa:{x:48,y:78,e:'🛋️',l:'Sofa',n:'Santai di sofa',m:60,fx:{sosial:.7,hibur:.3},say:'Nyaman banget.'},
+  buku:{x:68,y:70,e:'📚',l:'Buku',n:'Baca buku',m:60,fx:{hibur:.55,energi:-.03},buy:1,say:'Ceritanya bagus!'},
+  lukis:{x:31,y:51,e:'🎨',l:'Lukis',n:'Melukis',m:90,fx:{hibur:.5,energi:-.04},pay:.2,buy:1,say:'Lukisan laku terjual!'},
+  gym:{x:66,y:89,e:'🏋️',l:'Gym',n:'Olahraga',m:45,fx:{hibur:.5,sosial:.1,bersih:-.5,lapar:-.4,energi:-.1},buy:1,say:'Badan jadi segar!'},
+  kebun:{r:1,need:'taman',x:22,y:44,e:'🌻',l:'Kebun',n:'Berkebun',m:60,fx:{hibur:.45,bersih:-.25},pay:.15,say:'Panen sayur!'},
+  bbq:{r:1,need:'taman',x:74,y:44,e:'🍖',l:'BBQ',n:'Panggang BBQ',m:40,fx:{lapar:2.2,sosial:.5,hibur:.2},cost:10,say:'Enak banget!'},
+  bangku:{r:1,need:'taman',x:48,y:72,e:'🪑',l:'Bangku',n:'Duduk santai',m:45,fx:{hibur:.4,sosial:.5,energi:.04},say:'Udara segar.'}
+};
+const UP={
+  kasur:['Kasur empuk','Energi tidur +50% per tingkat',150,.5],
+  tv:['TV layar lebar','Hiburan TV +50% per tingkat',200,.5],
+  kulkas:['Kulkas besar','Makan makin murah tiap tingkat',120,0],
+  komputer:['Komputer baru','Gaji kerja +50% per tingkat',250,0],
+  shower:['Pemanas air','Mandi +40% per tingkat',100,.4],
+  buku:['Rak buku','Buka kegiatan Baca; karier naik 50% lebih cepat',180,0,1],
+  lukis:['Easel lukis','Buka kegiatan Melukis; lukisan bisa dijual',160,0,1],
+  gym:['Alat olahraga','Buka kegiatan Olahraga; energi lebih awet',220,0,1],
+  taman:['Taman belakang','Ruang baru: kebun, BBQ, dan bangku',300,0,1],
+  kucing:['Kucing Mochi','Teman baru, hiburan turun lebih lambat. Ketuk untuk memberi makan',120,0,1]
+};
+const LV=[{n:'Magang',r:.3,h:0},{n:'Staf',r:.45,h:10},{n:'Manajer',r:.65,h:30}];
+const NM=[['Budi','#ffd9a8'],['Sari','#ffc2d9']];
+const mk=i=>({n:{lapar:70,energi:80,bersih:80,hibur:60,sosial:60},x:i?58:42,y:58,work:0,auto:i?1:0});
+const START=()=>({t:420,money:40,dif:1,up:{},rel:0,day:0,pl:80,goals:{},nb:{rel:[5,5,5],v:[]},hh:7,ch:[mk(0),mk(1)]});
+let S=START(),R=[{cur:null,to:0},{cur:null,to:0}],sel=0,speed=1,lastSave=0,musicOn=true,sfxOn=true;
+try{const r=localStorage.getItem('rumahmungil2');if(r){const o=JSON.parse(r);if(o&&o.ch&&o.ch.length===2){S=Object.assign(START(),o);S.ch.forEach((c,i)=>{if(c.auto===undefined)c.auto=i?1:0})}}}catch(e){}
+
+/* ---------- suara ---------- */
+let AC,mg,sg;
+function ac(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();mg=AC.createGain();mg.gain.value=.5;mg.connect(AC.destination);sg=AC.createGain();sg.gain.value=.6;sg.connect(AC.destination)}catch(e){}}
+  if(AC&&AC.state==='suspended')AC.resume();return AC}
+function tone(f,t,d,type,v,dest){const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(dest);o.start(t);o.stop(t+d+.05)}
+function sfx(k){if(!sfxOn||!ac())return;const t=AC.currentTime,T=(f,a,d,ty,v)=>tone(f,t+a,d,ty||'triangle',v||.14,sg);
+  if(k==='tap')T(660,0,.08,'square',.06);
+  else if(k==='done'){T(784,0,.18);T(988,.09,.18);T(1175,.18,.25)}
+  else if(k==='coin'){T(988,0,.07,'square',.06);T(1319,.07,.25,'square',.06)}
+  else if(k==='up'){[523,659,784,1047].forEach((f,i)=>T(f,i*.1,.25))}
+  else T(180,0,.22,'sawtooth',.07)}
+const CH=[[57,60,64,69],[53,57,60,65],[48,52,55,60],[55,59,62,67]],mf=m=>440*Math.pow(2,(m-69)/12);
+let step=0,nextT=0;
+function music(){if(!musicOn||!AC||AC.state!=='running')return;
+  while(nextT<AC.currentTime+.4){if(nextT<AC.currentTime)nextT=AC.currentTime+.05;
+    const c=CH[Math.floor(step/8)%4],i=step%8;
+    if(i===0)tone(mf(c[0]-12),nextT,1.5,'sine',.22,mg);
+    if(i===4)tone(mf(c[0]-5),nextT,.7,'sine',.12,mg);
+    if(Math.random()<.8)tone(mf(c[[0,1,2,3,2,1,2,1][i]]+(Math.random()<.2?12:0)),nextT,.5,'triangle',.07,mg);
+    nextT+=.375;step++}}
+setInterval(music,120);
+document.addEventListener('pointerdown',()=>ac(),{once:true});
+$('#bm').onclick=()=>{musicOn=!musicOn;$('#bm').classList.toggle('off',!musicOn);ac();if(musicOn)nextT=0};
+$('#bs').onclick=()=>{sfxOn=!sfxOn;$('#bs').classList.toggle('off',!sfxOn);sfx('tap')};
+
+/* ---------- elemen ---------- */
+const room=$('#room'),night=$('#night');
+for(const k in OB){const o=OB[k],b=document.createElement('button');b.className='ob';b.id='ob-'+k;b.style.left=o.x+'%';b.style.top=o.y+'%';b.setAttribute('aria-label',o.n);b.onclick=()=>go(sel,k);room.insertBefore(b,night)}
+function label(){for(const k in OB){$('#ob-'+k).innerHTML=OB[k].e+'<span>'+OB[k].l+(S.up[k]&&UP[k]?' '+'★'.repeat(S.up[k]):'')+'</span>';const nk=OB[k].need||(OB[k].buy?k:'');$('#ob-'+k).style.display=(OB[k].r|0)!==view||(nk&&!S.up[nk])?'none':''}}
+NM.forEach((p,i)=>{const e=document.createElement('div');e.className='me'+(i?' f':'');e.style.background=p[1];
+  e.innerHTML='<div class="pb"></div><div class="bub"></div><div class="face">'+(i?'👩':'🧑')+'</div><div class="emo">🙂</div><div class="nm">'+p[0]+'</div>';
+  e.onclick=()=>pick(i);room.insertBefore(e,night);R[i].el=e;
+  const t=document.createElement('button');t.className='tab';t.textContent=p[0];t.onclick=()=>pick(i);$('#tabs').appendChild(t);R[i].tab=t});
+const nd=$('#needs');
+for(const k in NAMA){const d=document.createElement('div');d.className='nd';d.innerHTML=NAMA[k]+'<div class="v"><i id="n-'+k+'"></i></div>';nd.appendChild(d)}
+function pick(i){sel=i;sfx('tap');if((S.ch[i].rm|0)!==view)setView(S.ch[i].rm|0);R.forEach((r,j)=>{r.el.classList.toggle('sel',j===i);r.tab.classList.toggle('on',j===i)});render()}
+
+function place(i,x,y,dur){const e=R[i].el;e.style.setProperty('--d',dur+'ms');e.style.left=x+'%';e.style.top=y+'%';S.ch[i].x=x;S.ch[i].y=y}
+function say(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
+const cost=k=>k==='kulkas'?Math.max(3,15-4*(S.up.kulkas|0)):(OB[k].cost||0);
+const lvl=c=>LV.reduce((a,l,j)=>c.work>=l.h*60?j:a,0);
+
+function go(i,k){if((S.ch[i].rm|0)!==(OB[k].r|0))return viaDoor(i,k);
+  const o=OB[k],c=S.ch[i],r=R[i];
+  if(S.money<cost(k)){say(i,'Uang tidak cukup',1800);sfx('no');return}
+  sfx('tap');clearTimeout(r.to);
+  const tx=o.x+(i?4:-4),ty=o.here?o.y:Math.min(o.y+11,90);
+  const dur=Math.max(250,Math.hypot(tx-c.x,ty-c.y)*45/speed);
+  r.cur={k,phase:'walk',left:o.m};r.el.classList.add('walk');place(i,tx,ty,dur);
+  r.to=setTimeout(()=>{
+    if(!r.cur||r.cur.k!==k)return;
+    if(S.money<cost(k)){say(i,'Uang tidak cukup',1800);sfx('no');stop(i);return}
+    S.money-=cost(k);r.cur.phase='do';r.el.classList.remove('walk')},dur);
+  render();
+}
+function stop(i){const r=R[i];r.cur=null;clearTimeout(r.to);r.el.classList.remove('walk');render()}
+const sofaMate=i=>{const c=R[1-i].cur;return c&&c.phase==='do'&&c.k==='sofa'};
+
+function tick(){
+  const dt=.6*speed;S.t+=dt;const dn=Math.floor(S.t/1440);if(dn>(S.day|0))newDay(dn);petTick(dt);kidTick(dt);nbTick(dt);if(++gt%20===0)goals();
+  S.ch.forEach((c,i)=>{
+    const r=R[i],cu=r.cur,o=cu&&cu.phase==='do'?OB[cu.k]:null,d=o?Math.min(dt,cu.left):dt;
+    let b=1;if(o){b=1+(UP[cu.k]?UP[cu.k][3]*(S.up[cu.k]|0):0);if(cu.k==='sofa'&&sofaMate(i)){b=2;if(i===0)S.rel=Math.min(100,S.rel+.08*d)}}
+    const zero=Object.values(c.n).some(x=>x<=0)?1.4:1;for(const k in c.n){let v=c.n[k]-DECAY[k]*dt*df().d*zero*(o&&o.sleep?.5:1)*(k==='sosial'&&S.rel>=25?.7:1)*(k==='energi'&&S.up.gym?.8:1)*(k==='hibur'&&S.up.kucing&&S.pl>20?.85:1);
+      if(o&&o.fx[k]){const f=o.fx[k]*d;v+=f>0?f*b:f}
+      c.n[k]=Math.max(0,Math.min(100,v))}
+    if(o){
+      if(o.pay){const before=lvl(c);S.money+=(o.pay===1?LV[before].r*(1+.5*(S.up.komputer|0)):o.pay)*d*df().i*(Math.min(...Object.values(c.n))>=15?1:.5);if(o.pay===1)c.work+=d*(S.up.buku?1.5:1);
+        const now=lvl(c);if(now>before){say(i,'Naik jabatan: '+LV[now].n+'!',3500);sfx('up');if($('#shop').classList.contains('open'))shop()}}
+      cu.left-=d;
+      if(cu.left<=.001){const s=o.say;if(o.pay)sfx('coin');else sfx('done');stop(i);say(i,s)}
+    }else if(c.n.energi<=0&&!cu){say(i,'Ngantuk berat… zzz');go(i,'kasur')}
+    const low=Math.min(...Object.values(c.n)),bub=r.el.querySelector('.bub');
+    if(!r.cur&&low<30&&!bub.classList.contains('show')){const k=Object.keys(c.n).find(x=>c.n[x]===low);
+      say(i,{lapar:'Perutku keroncongan…',energi:'Capek banget…',bersih:'Perlu mandi…',hibur:'Bosan…',sosial:'Kesepian…'}[k],2500)}
+    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>25)auto(i)}else r.idle=0;
+  });
+  render();
+  if(Date.now()-lastSave>2000){lastSave=Date.now();try{localStorage.setItem('rumahmungil2',JSON.stringify(S))}catch(e){}}
+}
+
+function render(){
+  S.ch.forEach((c,i)=>{const v=Object.values(c.n),avg=v.reduce((a,b)=>a+b,0)/v.length,r=R[i],cu=r.cur,sl=cu&&cu.phase==='do'&&OB[cu.k].sleep;
+    r.el.style.setProperty('--pb','hsl('+(avg*1.25)+',75%,52%)');
+    r.el.querySelector('.emo').textContent=sl?'😴':avg>66?'😄':avg>40?'🙂':avg>20?'😟':'😫'});
+  const c=S.ch[sel],cu=R[sel].cur;
+  for(const k in c.n){const e=$('#n-'+k),x=c.n[k];e.style.height=x+'%';e.style.background='hsl('+(x*1.2)+',70%,48%)'}
+  document.querySelectorAll('.ob').forEach(e=>e.classList.remove('on'));
+  if(cu){$('#ob-'+cu.k).classList.add('on');const o=OB[cu.k];
+    $('#act').innerHTML=NM[sel][0]+': '+(cu.phase==='walk'?'menuju <b>'+o.l+'</b>':'<b>'+o.n+'</b>');
+    $('#prog').style.width=cu.phase==='do'?(100-cu.left/o.m*100)+'%':'0'}
+  else{$('#act').textContent=NM[sel][0]+': santai';$('#prog').style.width='0'}
+  $('#ba').textContent='Auto '+NM[sel][0]+': '+(c.auto?'nyala':'mati');$('#ba').classList.toggle('off',!c.auto);
+  $('#rel').textContent='❤️ Kedekatan '+Math.floor(S.rel)+'/100 · '+(S.rel>=100?'Pasangan':S.rel>=60?'Sahabat':S.rel>=25?'Teman dekat':'Kenalan')+(S.kid?' · 👶 Kiki: '+(S.kid.sleep?'tidur':S.kid.lapar<30?'lapar!':S.kid.energi<30?'ngantuk!':S.kid.hibur<30?'bosan!':'senang'):'');
+  const day=Math.floor(S.t/1440)+1,m=Math.floor(S.t%1440),h=Math.floor(m/60);
+  $('#clock').textContent='Hari '+day+' · '+String(h).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  difLabel();$('#money').textContent='Rp '+Math.floor(S.money)+'rb';
+  const hr=(S.t%1440)/60;
+  night.style.opacity=hr<5?.5:hr<7?.5*(7-hr)/2:hr<19?0:hr<21?.5*(hr-19)/2:.5;
+}
+
+function shop(){
+  let h='<h2>Upgrade rumah</h2>';
+  for(const k in UP){const u=UP[k],lv=S.up[k]|0,own=lv>=(u[4]||3),p=price(k);
+    h+='<div class="it"><div><b>'+u[0]+(lv?' '+'★'.repeat(lv):'')+'</b><small>'+u[1]+'</small></div><button data-k="'+k+'" '+(own||S.money<p?'disabled':'')+'>'+(own?'Dimiliki ✓':'Rp '+p+'rb')+'</button></div>'}
+  h+='<h2 style="margin-top:10px">Karier</h2>';
+  S.ch.forEach((c,i)=>{const l=lvl(c),nx=LV[l+1];
+    h+='<div class="it"><div><b>'+NM[i][0]+': '+LV[l].n+'</b><small>'+(nx?'Kerja '+Math.max(0,Math.ceil(nx.h-c.work/60))+' jam lagi untuk jadi '+nx.n:'Jabatan tertinggi')+'</small></div><span>Rp '+Math.round(LV[l].r*240)+'rb/4 jam</span></div>'});
+  h+='<h2 style="margin-top:10px">Misi</h2>';G.forEach((g,j)=>{const ok=S.goals[j],p=Math.floor(g[2]()*100);h+='<div class="it"><div><b>'+g[0]+(ok?' ✓':'')+'</b><small>'+g[1]+' · hadiah Rp '+g[3]+'rb</small></div><span>'+(ok?'Selesai':p+'%')+'</span></div>'});
+  $('#shop').innerHTML=h;
+}
+$('#shop').onclick=e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k||(S.up[k]|0)>=(UP[k][4]||3)||S.money<price(k))return;
+  S.money-=price(k);S.up[k]=(S.up[k]|0)+1;sfx('up');setView(view);shop();render()};
+$('#bshop').onclick=()=>{const s=$('#shop');s.classList.toggle('open');if(s.classList.contains('open')){shop();s.scrollIntoView({block:'nearest',behavior:'smooth'})}sfx('tap')};
+let view=0,gt=0,pt=0;
+const G=[
+ ['Pekerja keras','Kerja total 40 jam',()=>Math.min(1,(S.ch[0].work+S.ch[1].work)/2400),100],
+ ['Rumah idaman','Kumpulkan 10 tingkat upgrade',()=>Math.min(1,Object.values(S.up).reduce((a,b)=>a+(b|0),0)/10),200],
+ ['Hati yang dekat','Kedekatan mencapai 100',()=>S.rel/100,150],
+ ['Bertahan hidup','Lewati 15 hari',()=>Math.min(1,(S.day|0)/15),120],
+ ['Rumah impian','Selesaikan 4 misi lain',()=>Object.keys(S.goals).length>=4?1:0,500],
+ ['Keluarga bahagia','Besarkan anak sampai usia 6 hari',()=>Math.min(1,(S.kid?S.kid.age:0)/6),250],
+ ['Warga favorit','Kedekatan 50 dengan Keluarga Santoso',()=>Math.min(1,Math.min(...S.nb.rel.slice(0,3))/50),300]
+];
+function goals(){G.forEach((g,j)=>{if(!S.goals[j]&&g[2]()>=1){S.goals[j]=1;S.money+=g[3];evt('🏆 Misi selesai: '+g[0]+' +Rp '+g[3]+'rb');sfx('up');if($('#shop').classList.contains('open'))shop()}})}
+function vis(){R.forEach((r,i)=>{r.el.style.display=(S.ch[i].rm|0)===view?'':'none'});$('#pet').style.display=S.up.kucing&&view===0?'':'none'}
+function setView(v){view=v;room.classList.toggle('gd',v===1);document.querySelectorAll('.vb').forEach((b,j)=>b.classList.toggle('on',j===v));$('#vb1').style.display=S.up.taman?'':'none';label();vis()}
+$('#vb0').onclick=()=>{sfx('tap');setView(0)};$('#vb1').onclick=()=>{sfx('tap');setView(1)};
+function viaDoor(i,k){const c=S.ch[i],r=R[i];clearTimeout(r.to);
+  r.cur={k,phase:'walk',left:OB[k].m};r.el.classList.add('walk');
+  const dur=Math.max(250,Math.hypot(50-c.x,96-c.y)*45/speed);place(i,50,96,dur);
+  r.to=setTimeout(()=>{c.rm=OB[k].r|0;place(i,50,96,0);if(i===sel)setView(c.rm);else vis();go(i,k)},dur)}
+const pet=document.createElement('div');pet.className='pet';pet.id='pet';pet.textContent='🐱';room.insertBefore(pet,night);pet.onclick=petAct;
+function petTick(dt){if(!S.up.kucing)return;S.pl=Math.max(0,S.pl-.04*dt);pet.textContent=S.pl<20?'😿':'🐱';
+  if(++pt%60===0){pet.style.left=(20+Math.random()*60)+'%';pet.style.top=(58+Math.random()*30)+'%'}
+  if(S.pl<=0)S.ch.forEach(c=>c.n.hibur=Math.max(0,c.n.hibur-.05*dt))}
+function petAct(){const c=S.ch[sel];sfx('tap');
+  if(S.pl<70&&S.money>=5){S.money-=5;S.pl=100;sfx('coin');say(sel,'Mochi kenyang 🐱',2200)}
+  else{c.n.hibur=Math.min(100,c.n.hibur+15);c.n.sosial=Math.min(100,c.n.sosial+5);say(sel,pk(['Purr~ lucu banget','Mochi manja 🐱']),2200)}}
+let kt=0;const KN=['lapar','energi','hibur'];
+const kid=document.createElement('div');kid.className='pet';kid.id='kid';kid.style.left='38%';kid.style.top='62%';kid.style.display='none';room.insertBefore(kid,night);kid.onclick=kidAct;
+function kidTick(dt){const k=S.kid;if(!k){kid.style.display='none';return}
+  k.age+=dt/1440;const D={lapar:.06,energi:.05,hibur:.07};
+  KN.forEach(n=>k[n]=Math.max(0,k[n]-D[n]*dt));
+  if(k.sleep){k.energi=Math.min(100,k.energi+.4*dt);if(k.energi>=100)k.sleep=0}
+  kidFace(k);
+  if(k.age>=3&&!k.sleep&&++kt%80===0){kid.style.left=(25+Math.random()*50)+'%';kid.style.top=(58+Math.random()*28)+'%'}
+  if(Math.min(k.lapar,k.energi,k.hibur)<=0)S.ch.forEach(c=>c.n.hibur=Math.max(0,c.n.hibur-.05*dt));
+  kid.style.display=view===0?'':'none'}
+function kidAct(){const k=S.kid;if(!k)return;const c=S.ch[sel];sfx('tap');
+  if(k.sleep){say(sel,'Ssst, Kiki lagi tidur… 😴',1800);return}
+  const n=KN.reduce((a,b)=>k[b]<k[a]?b:a);
+  if(k[n]<70){
+    if(n==='lapar'){if(S.money<8){sfx('no');say(sel,'Uang tidak cukup',1500);return}S.money-=8;k.lapar=100;say(sel,'Kiki kenyang! 🍼',2200)}
+    else if(n==='energi'){k.sleep=1;say(sel,'Tidur nyenyak ya, Kiki 😴',2200)}
+    else{k.hibur=100;c.n.hibur=Math.min(100,c.n.hibur+10);c.n.sosial=Math.min(100,c.n.sosial+6);S.rel=Math.min(100,S.rel+1);say(sel,'Main bareng Kiki! 🧸',2200)}
+    sfx('coin')}
+  else{c.n.sosial=Math.min(100,c.n.sosial+6);S.rel=Math.min(100,S.rel+.5);say(sel,pk(['Kiki tersenyum 😊','Gendong Kiki~','Kiki lucu sekali!']),2200)}}
+let IMG={};try{IMG=JSON.parse(localStorage.getItem('rumahmungil_img')||'{}')||{}}catch(e){}
+function saveImg(){try{localStorage.setItem('rumahmungil_img',JSON.stringify(IMG))}catch(e){}}
+function loadImg(file,cb){const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(im.width,im.height),c=document.createElement('canvas');c.width=c.height=128;c.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,128,128);cb(c.toDataURL('image/jpeg',.82))};im.src=rd.result};rd.readAsDataURL(file)}
+function skinChar(i){const f=R[i].el.querySelector('.face'),u=IMG[i];f.style.backgroundImage=u?'url('+u+')':'';f.textContent=u?'':(i?'👩':'🧑')}
+function kidFace(k){if(!kid.firstChild||!kid.firstChild.classList)kid.innerHTML='<div class="face"></div><div class="emo"></div>';
+  const f=kid.firstChild,e=kid.lastChild,u=IMG.kid,s=k.sleep?'😴':'';
+  kid.classList.toggle('ci',!!u);
+  if(kid._u!==u){kid._u=u;f.style.backgroundImage=u?'url('+u+')':''}
+  f.textContent=u?'':(k.sleep?'😴':(k.age<3?'👶':'🧒'));
+  e.textContent=u?s:'';e.style.display=u&&s?'':'none'}
+let tgt=null;
+$('#bp').onclick=()=>{const p=$('#pp');sfx('tap');if(p.style.display==='flex'){p.style.display='none';return}
+  p.innerHTML='';const L=[['0','Budi'],['1','Sari']];if(S.kid)L.push(['kid','Kiki']);
+  L.forEach(([t,n])=>{const b=document.createElement('button');b.className='chip';b.textContent=n+(IMG[t]?' ✓':'');b.onclick=()=>{tgt=t;$('#pf').value='';$('#pf').click()};p.appendChild(b)});
+  const r=document.createElement('button');r.className='chip';r.textContent='↺ Bawaan';r.onclick=()=>{IMG={};saveImg();skinChar(0);skinChar(1);p.style.display='none'};p.appendChild(r);p.style.display='flex'};
+$('#pf').onchange=e=>{const f=e.target.files[0];if(!f||tgt==null)return;loadImg(f,u=>{IMG[tgt]=u;saveImg();skinChar(0);skinChar(1);$('#pp').style.display='none';sfx('up')})};
+const DF=[{d:1,i:1,b:1},{d:1.4,i:.7,b:1.5},{d:1.8,i:.5,b:2.5}];
+const df=()=>DF[S.dif==null?1:S.dif];
+function difLabel(){$('#dif').textContent='Tingkat: '+['Normal','Menantang','Brutal'][S.dif==null?1:S.dif]}
+$('#dif').onclick=()=>{S.dif=((S.dif==null?1:S.dif)+1)%3;sfx('tap');difLabel()};
+let nt=0,nbq=0;
+const FAM='Keluarga Santoso';
+const NB=[['Pak Hendra','👨','ayah, suka bercanda'],['Bu Wati','👩‍🦰','ibu, jago masak'],['Dika','👦','anak 8 tahun, hobi main']];
+const NL=[['Rumahmu nyaman ya!','Ada kopi hangat?','Kerjaan lancar?'],['Aku bawa resep baru','Kalian tetangga yang baik','Ayo masak bareng'],['Kucingmu lucu!','Main yuk!','Aku bisa gambar!']];
+const NBE=NB.map((n,i)=>{const e=document.createElement('div');e.className='nbr';e.innerHTML=n[1]+'<div class="bub"></div><div class="nm">'+n[0]+'</div>';e.onclick=()=>nbAct(i);room.insertBefore(e,night);return e});
+function nbSay(i,t){const e=NBE[i],b=e.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>b.classList.remove('show'),2600)}
+function famStatus(){const h=(S.t%1440)/60;return h<6||h>=22?'sedang tidur':h<8?'bersiap-siap':h<16?'kerja dan sekolah':h<21?'santai di rumah':'bersiap tidur'}
+function nbShow(){const p=$('#nbp'),here=S.nb.v.length;
+  let h='<h2>👨‍👩‍👦 '+FAM+'</h2><small style="color:var(--mut)">Tetangga sebelah. Mereka punya jadwal dan bergerak sendiri.</small>';
+  NB.forEach((n,i)=>{h+='<div class="it"><div><b>'+n[1]+' '+n[0]+'</b><small>'+n[2]+' · ❤️ '+Math.floor(S.nb.rel[i])+'/100'+(S.nb.v.some(x=>x.i===i)?' · sedang di rumahmu':'')+'</small></div></div>'});
+  h+='<div class="it"><div><b>Status</b><small>'+(here?'Sedang bertamu di rumahmu':'Di rumah mereka: '+famStatus())+'</small></div><button data-inv="1" '+(here||S.money<10||nbq>0?'disabled':'')+'>Undang Rp10rb</button></div>';
+  p.innerHTML=h}
+function nbOpen(){return $('#nbp').classList.contains('open')}
+function arrive(inv){NB.forEach((n,i)=>{S.nb.v.push({i,left:150+Math.random()*30,cd:0});NBE[i].style.left='50%';NBE[i].style.top='96%'});
+  const r=S.nb.rel,all=f=>S.ch.forEach(c=>f(c.n));
+  let m=FAM+(inv?' menerima undanganmu! 👋':' mampir! 👋');
+  if(r[0]>=40){S.money+=20;m+=' Pak Hendra kasih tip +Rp 20rb.'}
+  if(r[1]>=30){all(n=>n.lapar=Math.min(100,n.lapar+30));m+=' Bu Wati bawa masakan 🍲'}
+  if(r[2]>=25){all(n=>n.hibur=Math.min(100,n.hibur+20));if(S.kid)S.kid.hibur=100;m+=' Dika ngajak main 🧸'}
+  evt(m);sfx('up');nbSay(0,'Selamat sore!');if(nbOpen())nbShow()}
+function visitCheck(h){if(h<10||h>20||S.nb.v.length)return;
+  const avg=S.nb.rel.slice(0,3).reduce((a,b)=>a+b,0)/3;
+  if(Math.random()<(h>=16?.2:.05)+avg*.001)arrive(0)}
+function nbTick(dt){const hh=Math.floor(S.t/60);if(hh!==S.hh){S.hh=hh;visitCheck(hh%24)}
+  nbq=Math.max(0,nbq-dt);const had=S.nb.v.length;
+  S.nb.v=S.nb.v.filter(v=>{v.left-=dt;v.cd=Math.max(0,v.cd-dt);return v.left>0});
+  if(had&&!S.nb.v.length){evt(FAM+' pamit, terima kasih! 👋');if(nbOpen())nbShow()}
+  if(S.nb.v.length)S.ch.forEach(c=>c.n.sosial=Math.min(100,c.n.sosial+.1*dt));
+  const rm=++nt%60===0,SP=[[50,64],[24,54],[68,72]];
+  NBE.forEach((e,i)=>{const v=S.nb.v.find(x=>x.i===i);e.style.display=v&&view===0?'block':'none';
+    if(v&&rm){const q=SP[i];e.style.left=(q[0]+(Math.random()-.5)*18)+'%';e.style.top=(q[1]+(Math.random()-.5)*12)+'%';
+      if(Math.random()<.25&&v.cd<=0){v.cd=30;S.ch.forEach(c=>c.n.sosial=Math.min(100,c.n.sosial+6));S.nb.rel[i]=Math.min(100,S.nb.rel[i]+1);nbSay(i,pk(NL[i]))}}})}
+function nbAct(i){const v=S.nb.v.find(x=>x.i===i);if(!v)return;const c=S.ch[sel];sfx('tap');
+  if(v.cd>0){say(sel,NB[i][0]+' sedang sibuk sebentar',1800);return}
+  v.cd=40;v.left+=15;c.n.sosial=Math.min(100,c.n.sosial+22);c.n.hibur=Math.min(100,c.n.hibur+6);S.nb.rel[i]=Math.min(100,S.nb.rel[i]+5);
+  sfx('coin');say(sel,'Ngobrol dengan '+NB[i][0]+' 💬',2200);nbSay(i,pk(NL[i]));if(nbOpen())nbShow()}
+$('#bn').onclick=()=>{const p=$('#nbp');p.classList.toggle('open');if(nbOpen()){nbShow();p.scrollIntoView({block:'nearest',behavior:'smooth'})}sfx('tap')};
+$('#nbp').onclick=e=>{const d=e.target.dataset;if(!d||!d.inv)return;
+  if(S.money<10||S.nb.v.length||nbq>0)return;
+  const hr=(S.t%1440)/60;nbq=60;
+  if(hr<8||hr>=21){evt(FAM+' sudah istirahat. Coba lagi besok.');nbShow();return}
+  const avg=S.nb.rel.slice(0,3).reduce((a,b)=>a+b,0)/3,pr=(hr>=16?.6:.3)+avg/250;
+  if(Math.random()<pr){S.money-=10;S.nb.rel=S.nb.rel.map(r=>Math.min(100,r+2));arrive(1)}
+  else evt(FAM+' sedang sibuk, mungkin lain kali.');
+  nbShow()};
+const pk=a=>a[Math.floor(Math.random()*a.length)];
+const price=k=>Math.round(UP[k][2]*[1,2.2,4][S.up[k]|0]);
+function evt(m){const e=$('#evt');e.textContent=m;e.classList.add('show');clearTimeout(evt.t);evt.t=setTimeout(()=>e.classList.remove('show'),4500)}
+function newDay(dn){S.day=dn;S.nb.rel=S.nb.rel.map((r,i)=>S.nb.v.some(x=>x.i===i)?r:Math.max(0,r-2));const lv=Object.values(S.up).reduce((a,b)=>a+(b|0),0),bill=Math.round((10+2*lv+(S.kid?8:0))*df().b);let m='';
+  if(S.money>=bill){S.money-=bill;m='Tagihan −Rp '+bill+'rb. '}else{S.money=0;S.ch.forEach(c=>c.n.hibur=Math.max(0,c.n.hibur-15));m='Tagihan menunggak, stres! '}
+  const E=[['Bonus dari klien +Rp 40rb',()=>{S.money+=40}],['Tetangga mampir, sosial naik!',()=>S.ch.forEach(c=>c.n.sosial=Math.min(100,c.n.sosial+25))],['Listrik padam, hiburan turun.',()=>S.ch.forEach(c=>c.n.hibur=Math.max(0,c.n.hibur-12))],['Dapat kue gratis, perut kenyang!',()=>S.ch.forEach(c=>c.n.lapar=Math.min(100,c.n.lapar+30))],['Hujan deras, rumah terasa nyaman.',()=>S.ch.forEach(c=>c.n.energi=Math.min(100,c.n.energi+10))],
+    ['Atap bocor, biaya perbaikan −Rp 30rb',()=>{S.money=Math.max(0,S.money-30)}],
+    ['Barang elektronik rusak −Rp 20rb',()=>{S.money=Math.max(0,S.money-20)}],
+    ['Flu menyerang, energi turun.',()=>S.ch.forEach(c=>c.n.energi=Math.max(0,c.n.energi-25))],
+    ['Cuaca panas, jadi cepat kotor.',()=>S.ch.forEach(c=>c.n.bersih=Math.max(0,c.n.bersih-25))]];
+  if(Math.random()<.7){const e=pk(E);e[1]();m+=e[0]}
+  if(S.rel>=100&&!S.kid){S.kid={age:0,lapar:80,energi:80,hibur:80,sleep:0};kid.style.left='38%';kid.style.top='62%';m+=' Bayi Kiki lahir! 👶'}
+  evt(m);sfx('tap');if($('#shop').classList.contains('open'))shop()}
+$('#bk').onclick=()=>{if(S.rel<25){sfx('no');say(sel,'Belum cukup dekat…',1800);return}
+  if(S.money<40){sfx('no');say(sel,'Uang tidak cukup',1500);return}
+  S.money-=40;S.rel=Math.min(100,S.rel+10);S.ch.forEach((c,i)=>{c.n.hibur=Math.min(100,c.n.hibur+25);c.n.sosial=Math.min(100,c.n.sosial+30);say(i,'Kencan seru! 💞',2600)});sfx('up')};
+function auto(i){const c=S.ch[i],n=c.n,hr=(S.t%1440)/60,k=Object.keys(n).sort((a,b)=>n[a]-n[b])[0];
+  const M={lapar:'kulkas',energi:'kasur',bersih:'shower',hibur:'tv',sosial:'sofa'};let t;
+  if(n[k]<40)t=M[k];
+  else if((hr>=22||hr<5)&&n.energi<85)t='kasur';
+  else if(S.money<60)t='komputer';
+  else t=pk(['komputer','sofa','tv','telepon','komputer'].concat(['buku','lukis','gym','kebun','bangku'].filter(x=>S.up[OB[x].need||x])));
+  if(t==='kulkas'&&S.money<cost('kulkas'))t='komputer';
+  if(t==='komputer'&&n.energi<30)t='kasur';
+  R[i].idle=0;go(i,t)}
+function mood(c){const v=Object.values(c.n);return v.reduce((a,b)=>a+b,0)/v.length}
+$('#ba').onclick=()=>{const c=S.ch[sel];c.auto=c.auto?0:1;sfx('tap');render()};
+$('#bg').onclick=()=>{const c=S.ch[sel],m=mood(c);sfx('tap');
+  if(m>60){c.n.sosial=Math.min(100,c.n.sosial+12);say(sel,pk(['Hai! 😊','Halo juga~','Senang disapa!']),2200)}
+  else if(m>35)say(sel,pk(['Hmm, iya?','Hai…']),2000);
+  else say(sel,pk(['Nanti dulu ya…','Lagi capek…','Aku butuh sesuatu dulu…']),2200)};
+$('#bh').onclick=()=>{if(S.money<10){sfx('no');say(sel,'Uang tidak cukup',1500);return}
+  const c=S.ch[sel];S.money-=10;c.n.hibur=Math.min(100,c.n.hibur+25);c.n.sosial=Math.min(100,c.n.sosial+8);S.rel=Math.min(100,S.rel+3);sfx('coin');say(sel,pk(['Wah, makasih! 🎁','Hadiah buat aku?','Baik banget~']),2400)};
+$('#bt').onclick=()=>{go(0,'sofa');go(1,'sofa');say(sel,'Yuk ngobrol!',1800)};
+$('#spd').onclick=()=>{speed=speed===1?2:speed===2?4:1;$('#spd').textContent=speed+'x';sfx('tap')};
+let rq=0,rq2=0;
+$('#reset').onclick=()=>{const b=$('#reset');
+  if(!rq){rq=1;b.textContent='Yakin? Ketuk lagi';b.style.color='#e5484d';clearTimeout(rq2);rq2=setTimeout(()=>{rq=0;b.textContent='Ulang';b.style.color=''},3500);return}
+  clearTimeout(rq2);rq=0;b.textContent='Ulang';b.style.color='';
+  const dif=S.dif;
+  R.forEach(r=>{clearTimeout(r.to);r.cur=null;r.idle=0;r.el.classList.remove('walk');r.el.querySelector('.bub').classList.remove('show')});
+  S=START();S.dif=dif;
+  try{localStorage.removeItem('rumahmungil2')}catch(e){}
+  S.ch.forEach((c,i)=>place(i,c.x,c.y,0));
+  $('#pet').style.left='30%';$('#pet').style.top='66%';
+  setView(0);pick(0);if($('#shop').classList.contains('open'))shop();render();sfx('up')};
+S.ch.forEach((c,i)=>place(i,c.x,c.y,0));
+S.nb.rel=S.nb.rel.slice(0,3);S.nb.v=S.nb.v.filter(x=>x.i<3);skinChar(0);skinChar(1);setView(0);pick(0);setInterval(tick,100);
+</script>
+</body>
+</html>

@@ -219,21 +219,32 @@ function sariActionAvailable(k){
 }
 function requestSariAI(){
   if(window.__sariAIThinking||!window.__sariAIReady||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;
-  const c=S.ch[1],options=Object.keys(OB).filter(sariActionAvailable).map(k=>({key:k,name:OB[k].n,object:OB[k].l,cost:cost(k),duration:OB[k].m}));
-  if(!options.length)return false;
+  const c=S.ch[1],action=R[1].cur?OB[R[1].cur.k]:null;
   window.__sariAIThinking=true;
-  window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_decision_request',context:{
+  window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_comment_request',context:{
     needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,
     room:(c.rm|0)?'taman':'rumah',relationship:Math.floor(S.rel),
-    currentAction:R[1].cur?OB[R[1].cur.k].n:'santai',request:window.__sariPendingRequest||'',options
+    currentAction:action?action.n:'sedang santai',phase:R[1].cur?R[1].cur.phase:'diam',
+    event:action?(R[1].cur.phase==='walk'?'sedang menuju '+action.l:'sedang '+action.n):'sedang tidak melakukan aktivitas',
+    recentComments:window.__sariRecentComments||[]
   }}));
   return true;
 }
 window.__receiveSariAI=function(result){
   window.__sariAIThinking=false;
   window.__sariPendingRequest='';
-  if(result&&typeof result.dialogue==='string')sayGemma(result.dialogue,2600);
-  // Sengaja abaikan result.action. Pergerakan dan aktivitas sepenuhnya milik game.
+  if(result&&typeof result.dialogue==='string'&&result.dialogue.trim()){
+    const line=result.dialogue.trim().replace(/^["'“”]+|["'“”]+$/g,'').slice(0,90);
+    if(line){
+      window.__sariRecentComments=window.__sariRecentComments||[];
+      if(!window.__sariRecentComments.includes(line)){
+        window.__sariRecentComments.push(line);
+        if(window.__sariRecentComments.length>6)window.__sariRecentComments.shift();
+        sayGemma(line,2600);
+      }
+    }
+  }
+  // Hanya teks dari Gemma yang boleh menjadi bubble. Aksi AI selalu diabaikan.
 };
 
 function go(i,k){if((S.ch[i].rm|0)!==(OB[k].r|0))return viaDoor(i,k);

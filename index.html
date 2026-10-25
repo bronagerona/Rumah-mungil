@@ -164,6 +164,9 @@ const mk=i=>({n:{lapar:70,energi:80,bersih:80,hibur:60,sosial:60},x:i?58:42,y:58
 const START=()=>({t:420,money:40,dif:1,up:{},rel:0,day:0,pl:80,goals:{},nb:{rel:[5,5,5],v:[]},hh:7,ch:[mk(0),mk(1)]});
 let S=START(),R=[{cur:null,to:0},{cur:null,to:0}],sel=0,speed=1,lastSave=0,musicOn=true,sfxOn=true;
 try{const r=localStorage.getItem('rumahmungil2');if(r){const o=JSON.parse(r);if(o&&o.ch&&o.ch.length===2){S=Object.assign(START(),o);S.ch.forEach((c,i)=>{if(c.auto===undefined)c.auto=i?1:0})}}}catch(e){}
+// Budi selalu dikendalikan pemain; Sari selalu berjalan dalam mode otonom.
+S.ch[0].auto=0;S.ch[1].auto=1;
+window.__sariAIReady=false;window.__sariAIThinking=false;
 
 /* ---------- suara ---------- */
 let AC,mg,sg;
@@ -207,6 +210,33 @@ function say(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.cla
 const cost=k=>k==='kulkas'?Math.max(3,15-4*(S.up.kulkas|0)):(OB[k].cost||0);
 const lvl=c=>LV.reduce((a,l,j)=>c.work>=l.h*60?j:a,0);
 
+// Jembatan WebView: Gemma hanya memilih aksi untuk Sari. Game tetap memvalidasi aksi.
+function sariActionAvailable(k){
+  const o=OB[k];if(!o)return false;
+  const locked=o.need||(o.buy?k:'');
+  return (o.r|0)===(S.ch[1].rm|0)&&(!locked||!!S.up[locked])&&S.money>=cost(k);
+}
+function requestSariAI(){
+  if(window.__sariAIThinking||!window.__sariAIReady||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;
+  const c=S.ch[1],options=Object.keys(OB).filter(sariActionAvailable).map(k=>({key:k,name:OB[k].n,object:OB[k].l,cost:cost(k),duration:OB[k].m}));
+  if(!options.length)return false;
+  window.__sariAIThinking=true;
+  window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_decision_request',context:{
+    needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,
+    room:(c.rm|0)?'taman':'rumah',relationship:Math.floor(S.rel),
+    currentAction:R[1].cur?OB[R[1].cur.k].n:'santai',options
+  }}));
+  return true;
+}
+window.__receiveSariAI=function(result){
+  window.__sariAIThinking=false;
+  if(R[1].cur)return;
+  if(!result||!sariActionAvailable(result.action)){R[1].idle=0;auto(1);return;}
+  R[1].idle=0;
+  if(typeof result.dialogue==='string'&&result.dialogue.trim())say(1,result.dialogue.trim().slice(0,100),2600);
+  go(1,result.action);
+};
+
 function go(i,k){if((S.ch[i].rm|0)!==(OB[k].r|0))return viaDoor(i,k);
   const o=OB[k],c=S.ch[i],r=R[i];
   if(S.money<cost(k)){say(i,'Uang tidak cukup',1800);sfx('no');return}
@@ -240,7 +270,7 @@ function tick(){
     const low=Math.min(...Object.values(c.n)),bub=r.el.querySelector('.bub');
     if(!r.cur&&low<30&&!bub.classList.contains('show')){const k=Object.keys(c.n).find(x=>c.n[x]===low);
       say(i,{lapar:'Perutku keroncongan…',energi:'Capek banget…',bersih:'Perlu mandi…',hibur:'Bosan…',sosial:'Kesepian…'}[k],2500)}
-    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>25)auto(i)}else r.idle=0;
+    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>25){if(i===1){if(!window.__sariAIThinking&&!requestSariAI())auto(i)}else auto(i)}}else r.idle=0;
   });
   render();
   if(Date.now()-lastSave>2000){lastSave=Date.now();try{localStorage.setItem('rumahmungil2',JSON.stringify(S))}catch(e){}}
@@ -257,7 +287,7 @@ function render(){
     $('#act').innerHTML=NM[sel][0]+': '+(cu.phase==='walk'?'menuju <b>'+o.l+'</b>':'<b>'+o.n+'</b>');
     $('#prog').style.width=cu.phase==='do'?(100-cu.left/o.m*100)+'%':'0'}
   else{$('#act').textContent=NM[sel][0]+': santai';$('#prog').style.width='0'}
-  $('#ba').textContent='Auto '+NM[sel][0]+': '+(c.auto?'nyala':'mati');$('#ba').classList.toggle('off',!c.auto);
+  $('#ba').textContent=sel===0?'🎮 Budi: kontrol pemain':'🤖 Sari: AI lokal';$('#ba').classList.toggle('off',sel===0);
   $('#rel').textContent='❤️ Kedekatan '+Math.floor(S.rel)+'/100 · '+(S.rel>=100?'Pasangan':S.rel>=60?'Sahabat':S.rel>=25?'Teman dekat':'Kenalan')+(S.kid?' · 👶 Kiki: '+(S.kid.sleep?'tidur':S.kid.lapar<30?'lapar!':S.kid.energi<30?'ngantuk!':S.kid.hibur<30?'bosan!':'senang'):'');
   const day=Math.floor(S.t/1440)+1,m=Math.floor(S.t%1440),h=Math.floor(m/60);
   $('#clock').textContent='Hari '+day+' · '+String(h).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
@@ -414,7 +444,7 @@ function auto(i){const c=S.ch[i],n=c.n,hr=(S.t%1440)/60,k=Object.keys(n).sort((a
   if(t==='komputer'&&n.energi<30)t='kasur';
   R[i].idle=0;go(i,t)}
 function mood(c){const v=Object.values(c.n);return v.reduce((a,b)=>a+b,0)/v.length}
-$('#ba').onclick=()=>{const c=S.ch[sel];c.auto=c.auto?0:1;sfx('tap');render()};
+$('#ba').onclick=()=>{sfx('tap');say(sel,sel===0?'Budi tetap kamu yang mengendalikan.':(window.__sariAIReady?'Sari dikendalikan Gemma lokal.':'AI Sari belum siap.'),2200)};
 $('#bg').onclick=()=>{const c=S.ch[sel],m=mood(c);sfx('tap');
   if(m>60){c.n.sosial=Math.min(100,c.n.sosial+12);say(sel,pk(['Hai! 😊','Halo juga~','Senang disapa!']),2200)}
   else if(m>35)say(sel,pk(['Hmm, iya?','Hai…']),2000);

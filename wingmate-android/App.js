@@ -42,12 +42,12 @@ export default function App() {
     inferenceRef.current=true;
     try{
       const s=msg.context||{};
-      const prompt='You control a separate companion aircraft in a vertical shooter. Read the state and choose ONE action based on current danger and targets. DEFEND = move to protect/evade threats near companion; FOCUS_BOSS = attack boss if present; ATTACK = pursue nearest enemy; PATROL = move in a supporting formation near player when no urgent target. Reply with exactly one word, no punctuation: defend, focus_boss, attack, or patrol. State: '+JSON.stringify(s);
-      const result=await ctxRef.current.completion({prompt,n_predict:12,temperature:0});
+      const prompt='Choose exactly one valid companion action using the state. Priorities: if boss=true choose focus_boss; else if threat=true or companionHp<35 choose defend; else if nearby>0 choose attack; otherwise choose patrol. Output one word only. Allowed: defend, focus_boss, attack, patrol. State: '+JSON.stringify({boss:!!s.boss,threat:!!s.threat,companionHp:Number(s.companionHp)||0,nearby:Number(s.nearby)||0,player:s.player,companion:s.companion,enemies:s.enemies});
+      const result=await ctxRef.current.completion({prompt,n_predict:8,temperature:0,grammar:'root ::= "defend" | "focus_boss" | "attack" | "patrol"'});
       const raw=String(result?.text||'').trim().toLowerCase();
       const normalized=raw.replace(/[^a-z_]/g,' ').split(/\s+/).find(token=>ACTIONS.includes(token));
       const action=normalized||null;
-      sendResult({action});
+      sendResult({action,raw:raw.slice(0,42)});
       setStatus(action?'AI LOKAL AKTIF · keputusan: '+action.toUpperCase():'AI lokal merespons, format keputusan tidak valid · '+raw.slice(0,42));
     }catch(e){sendResult({action:null});setStatus('AI lokal gagal memberi keputusan; periksa logika model/prompt.')}
     finally{inferenceRef.current=false}

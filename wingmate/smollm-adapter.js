@@ -9,7 +9,7 @@ function request(state){
   const host=window.ReactNativeWebView;
   if(!host||typeof host.postMessage!=='function')return false;
   inFlight=true;lastRequest=now;
-  try{host.postMessage(JSON.stringify({type:'wingmate_decision_request',context:state}));timeoutId=setTimeout(()=>{inFlight=false;if(window.__wingmateAIRequestFailed)window.__wingmateAIRequestFailed()},12000);return true}
+  try{host.postMessage(JSON.stringify({type:'wingmate_decision_request',context:state}));timeoutId=setTimeout(()=>{inFlight=false;timeoutId=null;if(window.__wingmateAIResponseTimeout)window.__wingmateAIResponseTimeout();if(window.__wingmateAIRequestFailed)window.__wingmateAIRequestFailed()},12000);return true}
   catch(e){inFlight=false;return false}
 }
 window.WingmateAI={

@@ -65,7 +65,7 @@ export default function App() {
       setCtx(next);
       next = null;
       setReady(true);
-      setStatus('Gemma siap · Sari dikendalikan AI lokal · Budi dikendalikan pemain');
+      setStatus('Gemma siap · Gemma membuat komentar Sari · gerak Sari diatur game');
     } catch (e) {
       const code = String(e?.code || '').toLowerCase();
       if (code.includes('cancel')) {
@@ -90,7 +90,7 @@ export default function App() {
   async function onGameMessage(event) {
     let message;
     try { message = JSON.parse(event.nativeEvent.data); } catch (_) { return; }
-    if (message?.type !== 'sari_decision_request') return;
+    if (message?.type !== 'sari_comment_request') return;
     if (!ctx || inferenceRef.current) {
       sendDecision({action: null, dialogue: ''});
       return;
@@ -100,27 +100,21 @@ export default function App() {
     try {
       const context = message.context || {};
       const prompt =
-        'Kamu adalah AI pengambil keputusan untuk Sari, karakter dalam game simulasi kehidupan Rumah Mungil. ' +
-        'Budi dikendalikan pemain, jadi jangan pernah mengambil alih Budi. ' +
-        'Pilih tepat satu aksi dari daftar opsi yang diberikan. Pertimbangkan kebutuhan Sari, uang, waktu, lokasi, hubungan, dan permintaan interaksi dari Budi. Sari boleh menerima atau menolak ajakan sesuai kondisinya. ' +
-        'Jangan mengarang aksi di luar daftar. Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"kalimat pendek bahasa Indonesia"}. ' +
-        'Dialog boleh kosong. Jangan sertakan markdown.\nKONDISI: ' + JSON.stringify(context);
+        'Kamu adalah Sari, teman serumah dalam game simulasi kehidupan Rumah Mungil. ' +
+        'Tugasmu HANYA mengucapkan satu komentar pendek dalam bahasa Indonesia berdasarkan kondisi yang diberikan. ' +
+        'Komentar harus alami, terasa spontan, sesuai kebutuhan, aktivitas, waktu, dan kejadian saat ini. ' +
+        'Buat variasi baru dan jangan mengulang komentar terbaru yang tercantum. Panjang 3 sampai 10 kata. ' +
+        'Jangan memberi instruksi, jangan menyebut data atau angka kebutuhan, jangan mengarang kejadian, dan jangan memilih atau menyarankan aksi game. ' +
+        'Balas hanya kalimat komentar, tanpa tanda kutip, label, JSON, atau penjelasan.\nKONDISI SARI: ' + JSON.stringify(context);
       const result = await ctx.completion({
         prompt,
-        n_predict: 96,
-        temperature: 0.35,
+        n_predict: 40,
+        temperature: 0.85,
+        top_p: 0.9,
       });
-      const raw = String(result?.text || '');
-      const start = raw.indexOf('{');
-      const end = raw.lastIndexOf('}');
-      if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
-      const parsed = JSON.parse(raw.slice(start, end + 1));
-      const options = Array.isArray(context.options) ? context.options : [];
-      const action = options.some(item => item.key === parsed.action) ? parsed.action : null;
-      sendDecision({
-        action,
-        dialogue: typeof parsed.dialogue === 'string' ? parsed.dialogue.slice(0, 100) : '',
-      });
+      const raw = String(result?.text || '').trim();
+      const line = raw.split(/\\n|[.!?](?:\\s|$)/)[0].replace(/^["'“”*\s]+|["'“”*\s]+$/g, '').trim();
+      sendDecision({dialogue: line.slice(0, 90)});
     } catch (e) {
       sendDecision({action: null, dialogue: ''});
     } finally {

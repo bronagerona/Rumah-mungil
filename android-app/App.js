@@ -1,35 +1,158 @@
-import React, {useEffect, useState} from 'react';
-import {SafeAreaView, StatusBar, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert, StyleSheet} from 'react-native';
-import DocumentPicker from 'react-native-document-picker';
+import React, {useEffect, useRef, useState} from 'react';
+import {SafeAreaView, StatusBar, Text, View, TouchableOpacity, ActivityIndicator, Alert, StyleSheet} from 'react-native';
+import {pick, types} from '@react-native-documents/picker';
 import {WebView} from 'react-native-webview';
 import {initLlama} from 'llama.rn';
 
 export default function App() {
- const [ctx,setCtx]=useState(null), [busy,setBusy]=useState(false), [status,setStatus]=useState('Pilih model GGUF untuk mengaktifkan NPC lokal.'), [question,setQuestion]=useState(''), [reply,setReply]=useState('');
- useEffect(()=>()=>{if(ctx?.release) ctx.release();},[ctx]);
- async function loadModel(){
-  try {
-   const file=await DocumentPicker.pickSingle({type:[DocumentPicker.types.allFiles],copyTo:'cachesDirectory'});
-   if(!file.name?.toLowerCase().endsWith('.gguf')) {Alert.alert('Pilih file .gguf');return;}
-   setBusy(true);setStatus('Memuat model. Tunggu sampai selesai…');
-   if(ctx?.release) await ctx.release();
-   const next=await initLlama({model:file.fileCopyUri||file.uri,n_ctx:2048,n_threads:4,n_gpu_layers:0,use_mmap:true});
-   setCtx(next);setStatus('Model siap. NPC berjalan lokal di HP.');
-  } catch(e) {if(!DocumentPicker.isCancel(e)) {setStatus('Gagal memuat model');Alert.alert('Model gagal dimuat',String(e?.message||e));}}
-  finally {setBusy(false);}
- }
- async function chat(){
-  if(!ctx||!question.trim()) return;
-  setBusy(true);setReply('');
-  try {const r=await ctx.completion({prompt:'Kamu NPC ramah di game simulasi kehidupan Rumah Mungil. Jawab singkat dalam bahasa Indonesia.\nPemain: '+question.trim()+'\nNPC:',n_predict:128,temperature:0.7});setReply(r.text?.trim()||'NPC tidak menjawab.');}
-  catch(e){Alert.alert('Kesalahan NPC',String(e?.message||e));}
-  finally{setBusy(false);}
- }
- return <SafeAreaView style={s.root}>
-  <StatusBar backgroundColor="#24352b" barStyle="light-content"/>
-  <View style={s.head}><Text style={s.title}>Rumah Mungil</Text><Text style={s.status}>{status}</Text><TouchableOpacity style={s.btn} onPress={loadModel} disabled={busy}><Text style={s.btnText}>{busy?'Memproses…':'Pilih model GGUF'}</Text></TouchableOpacity></View>
-  <View style={s.game}><WebView source={{uri:'file:///android_asset/index.html'}} javaScriptEnabled domStorageEnabled allowFileAccess originWhitelist={['*']}/></View>
-  <View style={s.chat}><Text style={s.label}>NPC AI lokal</Text><View style={s.row}><TextInput style={s.input} value={question} onChangeText={setQuestion} placeholder="Ngobrol dengan NPC…" placeholderTextColor="#666"/><TouchableOpacity style={s.btn} onPress={chat} disabled={busy||!ctx}><Text style={s.btnText}>Kirim</Text></TouchableOpacity></View>{busy?<ActivityIndicator/>:null}{reply?<Text style={s.reply}>{reply}</Text>:null}</View>
- </SafeAreaView>;
+  const [ctx, setCtx] = useState(null);
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('Pilih model Gemma 3 1B (.gguf). Game baru dibuka setelah AI lolos tes.');
+  const webRef = useRef(null);
+  const inferenceRef = useRef(false);
+
+  useEffect(() => () => {
+    if (ctx?.release) ctx.release();
+  }, [ctx]);
+
+  async function loadModel() {
+    let next = null;
+    try {
+      setBusy(true);
+      const picked = await pick({type: [types.allFiles], copyTo: 'cachesDirectory'});
+      const file = Array.isArray(picked) ? picked[0] : picked;
+      if (!file?.name?.toLowerCase().endsWith('.gguf')) {
+        Alert.alert('Format model salah', 'Pilih file model dengan ekstensi .gguf.');
+        return;
+      }
+      setStatus('Menyiapkan Gemma di HP…');
+      if (ctx?.release) await ctx.release();
+      setCtx(null);
+      setReady(false);
+      next = await initLlama({
+        model: file.fileCopyUri || file.uri,
+        n_ctx: 2048,
+        n_threads: 4,
+        n_gpu_layers: 0,
+        use_mmap: true,
+      });
+      setStatus('Menguji inferensi lokal…');
+      const probe = await next.completion({
+        prompt: 'Balas tepat satu kata: SIAP',
+        n_predict: 12,
+        temperature: 0,
+      });
+      if (!probe?.text?.trim()) throw new Error('Model tidak menghasilkan respons pada tes awal.');
+      setCtx(next);
+      next = null;
+      setReady(true);
+      setStatus('Gemma siap · Sari dikendalikan AI lokal · Budi dikendalikan pemain');
+    } catch (e) {
+      const code = String(e?.code || '').toLowerCase();
+      if (code.includes('cancel')) {
+        setStatus(ready ? 'Gemma tetap aktif.' : 'Pemilihan model dibatalkan. Pilih file .gguf untuk melanjutkan.');
+      } else {
+        setStatus('Model belum siap. Periksa file .gguf dan coba lagi.');
+        Alert.alert('Gemma belum siap', String(e?.message || e));
+      }
+    } finally {
+      if (next?.release) {
+        try { await next.release(); } catch (_) {}
+      }
+      setBusy(false);
+    }
+  }
+
+  function sendDecision(result) {
+    const js = 'window.__receiveSariAI(' + JSON.stringify(result) + '); true;';
+    webRef.current?.injectJavaScript(js);
+  }
+
+  async function onGameMessage(event) {
+    let message;
+    try { message = JSON.parse(event.nativeEvent.data); } catch (_) { return; }
+    if (message?.type !== 'sari_decision_request') return;
+    if (!ctx || inferenceRef.current) {
+      sendDecision({action: null, dialogue: ''});
+      return;
+    }
+
+    inferenceRef.current = true;
+    try {
+      const context = message.context || {};
+      const prompt =
+        'Kamu adalah AI pengambil keputusan untuk Sari, karakter dalam game simulasi kehidupan Rumah Mungil. ' +
+        'Budi dikendalikan pemain, jadi jangan pernah mengambil alih Budi. ' +
+        'Pilih tepat satu aksi dari daftar opsi yang diberikan. Pertimbangkan kebutuhan Sari, uang, waktu, lokasi, dan hubungan. ' +
+        'Jangan mengarang aksi di luar daftar. Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"kalimat pendek bahasa Indonesia"}. ' +
+        'Dialog boleh kosong. Jangan sertakan markdown.\nKONDISI: ' + JSON.stringify(context);
+      const result = await ctx.completion({
+        prompt,
+        n_predict: 96,
+        temperature: 0.35,
+      });
+      const raw = String(result?.text || '');
+      const start = raw.indexOf('{');
+      const end = raw.lastIndexOf('}');
+      if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
+      const parsed = JSON.parse(raw.slice(start, end + 1));
+      const options = Array.isArray(context.options) ? context.options : [];
+      const action = options.some(item => item.key === parsed.action) ? parsed.action : null;
+      sendDecision({
+        action,
+        dialogue: typeof parsed.dialogue === 'string' ? parsed.dialogue.slice(0, 100) : '',
+      });
+    } catch (e) {
+      sendDecision({action: null, dialogue: ''});
+    } finally {
+      inferenceRef.current = false;
+    }
+  }
+
+  return (
+    <SafeAreaView style={styles.root}>
+      <StatusBar backgroundColor="#24352b" barStyle="light-content" />
+      <View style={styles.head}>
+        <Text style={styles.title}>Rumah Mungil</Text>
+        <Text style={styles.status}>{status}</Text>
+        <TouchableOpacity style={styles.btn} onPress={loadModel} disabled={busy}>
+          <Text style={styles.btnText}>{busy ? 'Memproses model…' : ready ? 'Ganti model GGUF' : 'Pilih model GGUF'}</Text>
+        </TouchableOpacity>
+      </View>
+      {ready ? (
+        <WebView
+          ref={webRef}
+          style={styles.game}
+          source={{uri: 'file:///android_asset/index.html'}}
+          javaScriptEnabled
+          domStorageEnabled
+          allowFileAccess
+          originWhitelist={['*']}
+          onMessage={onGameMessage}
+          onLoadEnd={() => webRef.current?.injectJavaScript('window.__sariAIReady=true; true;')}
+        />
+      ) : (
+        <View style={styles.loader}>
+          {busy ? <ActivityIndicator size="large" color="#365c43" /> : <Text style={styles.emoji}>🏡</Text>}
+          <Text style={styles.loaderTitle}>{busy ? 'Menyiapkan teman serumah…' : 'Siapkan AI Sari'}</Text>
+          <Text style={styles.loaderText}>Pilih model Gemma 3 1B GGUF yang tersimpan di HP. Game hanya dibuka setelah model berhasil dimuat dan memberi respons tes. Model tidak dibundel ke APK.</Text>
+        </View>
+      )}
+    </SafeAreaView>
+  );
 }
-const s=StyleSheet.create({root:{flex:1,backgroundColor:'#f5f1e6'},head:{backgroundColor:'#24352b',padding:12},title:{fontSize:20,fontWeight:'bold',color:'#fff'},status:{color:'#fff',marginVertical:6},btn:{backgroundColor:'#365c43',padding:10,borderRadius:8,alignItems:'center'},btnText:{color:'#fff',fontWeight:'bold'},game:{flex:1},chat:{padding:10,backgroundColor:'#e5e0d2'},label:{fontWeight:'bold',marginBottom:6},row:{flexDirection:'row',gap:8},input:{flex:1,backgroundColor:'#fff',borderRadius:8,paddingHorizontal:10},reply:{marginTop:8,color:'#222'}});
+
+const styles = StyleSheet.create({
+  root: {flex: 1, backgroundColor: '#f5f1e6'},
+  head: {backgroundColor: '#24352b', padding: 12},
+  title: {fontSize: 20, fontWeight: 'bold', color: '#fff'},
+  status: {color: '#fff', marginVertical: 6},
+  btn: {backgroundColor: '#365c43', padding: 10, borderRadius: 8, alignItems: 'center'},
+  btnText: {color: '#fff', fontWeight: 'bold'},
+  game: {flex: 1},
+  loader: {flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28},
+  emoji: {fontSize: 48, marginBottom: 12},
+  loaderTitle: {fontSize: 20, fontWeight: 'bold', color: '#24352b', marginBottom: 10},
+  loaderText: {textAlign: 'center', color: '#4f5b51', lineHeight: 22},
+});

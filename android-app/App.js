@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {SafeAreaView, StatusBar, Text, View, TouchableOpacity, ActivityIndicator, Alert, StyleSheet} from 'react-native';
-import {pick, types} from '@react-native-documents/picker';
+import {pick, types, keepLocalCopy} from '@react-native-documents/picker';
 import {WebView} from 'react-native-webview';
 import {initLlama} from 'llama.rn';
 
@@ -25,11 +25,20 @@ export default function App() {
     let next = null;
     try {
       setBusy(true);
-      const picked = await pick({type: [types.allFiles], copyTo: 'cachesDirectory'});
+      const picked = await pick({type: [types.allFiles]});
       const file = Array.isArray(picked) ? picked[0] : picked;
       if (!file?.name?.toLowerCase().endsWith('.gguf')) {
         Alert.alert('Format model salah', 'Pilih file model dengan ekstensi .gguf.');
         return;
+      }
+      setStatus('Menyalin model ke penyimpanan aplikasi…');
+      const copies = await keepLocalCopy({
+        files: [{uri: file.uri, fileName: file.name}],
+        destination: 'cachesDirectory',
+      });
+      const localCopy = copies?.[0];
+      if (localCopy?.status !== 'success' || !localCopy.localUri) {
+        throw new Error(localCopy?.copyError || 'Tidak bisa menyalin file model ke penyimpanan aplikasi.');
       }
       setStatus('Menyiapkan Gemma di HP…');
       if (ctxRef.current?.release) {
@@ -39,7 +48,7 @@ export default function App() {
       setCtx(null);
       setReady(false);
       next = await initLlama({
-        model: file.fileCopyUri || file.uri,
+        model: localCopy.localUri,
         n_ctx: 2048,
         n_threads: 4,
         n_gpu_layers: 0,

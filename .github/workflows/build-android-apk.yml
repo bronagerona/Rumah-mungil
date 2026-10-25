@@ -8,6 +8,7 @@ on:
     paths:
       - "android-app/**"
       - "index.html"
+      - "dungeon.js"
       - ".github/workflows/build-android-apk.yml"
 
 permissions:
@@ -44,6 +45,7 @@ jobs:
           cp android-app/App.js RumahMungilNative/App.tsx
           mkdir -p RumahMungilNative/android/app/src/main/assets
           cp index.html RumahMungilNative/android/app/src/main/assets/index.html
+          cp dungeon.js RumahMungilNative/android/app/src/main/assets/dungeon.js
       - name: Bundle React Native JavaScript for standalone APK
         working-directory: RumahMungilNative
         run: |

@@ -44,6 +44,10 @@ jobs:
           cp android-app/App.js RumahMungilNative/App.tsx
           mkdir -p RumahMungilNative/android/app/src/main/assets
           cp index.html RumahMungilNative/android/app/src/main/assets/index.html
+      - name: Bundle React Native JavaScript for standalone APK
+        working-directory: RumahMungilNative
+        run: |
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
       - name: Build debug APK
         working-directory: RumahMungilNative/android
         run: ./gradlew assembleDebug --no-daemon

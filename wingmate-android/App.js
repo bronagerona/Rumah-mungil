@@ -45,7 +45,7 @@ export default function App() {
       const prompt='You control a separate companion aircraft in a vertical shooter. Read the state and choose ONE action based on current danger and targets. DEFEND = move to protect/evade threats near companion; FOCUS_BOSS = attack boss if present; ATTACK = pursue nearest enemy; PATROL = move in a supporting formation near player when no urgent target. Reply with exactly one word, no punctuation: defend, focus_boss, attack, or patrol. State: '+JSON.stringify(s);
       const result=await ctxRef.current.completion({prompt,n_predict:12,temperature:0});
       const raw=String(result?.text||'').trim().toLowerCase();
-      const normalized=raw.replace(/[^a-z_]/g,' ').split(/\\s+/).find(token=>ACTIONS.includes(token));
+      const normalized=raw.replace(/[^a-z_]/g,' ').split(/\s+/).find(token=>ACTIONS.includes(token));
       const action=normalized||null;
       sendResult({action});
       setStatus(action?'AI LOKAL AKTIF · keputusan: '+action.toUpperCase():'AI lokal merespons, format keputusan tidak valid · '+raw.slice(0,42));

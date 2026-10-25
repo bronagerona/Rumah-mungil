@@ -166,7 +166,7 @@ let S=START(),R=[{cur:null,to:0},{cur:null,to:0}],sel=0,speed=1,lastSave=0,music
 try{const r=localStorage.getItem('rumahmungil2');if(r){const o=JSON.parse(r);if(o&&o.ch&&o.ch.length===2){S=Object.assign(START(),o);S.ch.forEach((c,i)=>{if(c.auto===undefined)c.auto=i?1:0})}}}catch(e){}
 // Budi selalu dikendalikan pemain; Sari selalu berjalan dalam mode otonom.
 S.ch[0].auto=0;S.ch[1].auto=1;
-window.__sariAIReady=false;window.__sariAIThinking=false;
+window.__sariAIReady=false;window.__sariAIThinking=false;window.__sariPendingRequest='';
 
 /* ---------- suara ---------- */
 let AC,mg,sg;
@@ -195,7 +195,7 @@ $('#bs').onclick=()=>{sfxOn=!sfxOn;$('#bs').classList.toggle('off',!sfxOn);sfx('
 
 /* ---------- elemen ---------- */
 const room=$('#room'),night=$('#night');
-for(const k in OB){const o=OB[k],b=document.createElement('button');b.className='ob';b.id='ob-'+k;b.style.left=o.x+'%';b.style.top=o.y+'%';b.setAttribute('aria-label',o.n);b.onclick=()=>go(sel,k);room.insertBefore(b,night)}
+for(const k in OB){const o=OB[k],b=document.createElement('button');b.className='ob';b.id='ob-'+k;b.style.left=o.x+'%';b.style.top=o.y+'%';b.setAttribute('aria-label',o.n);b.onclick=()=>{if(sel===1){say(1,'Aku memilih aktivitas sendiri ya 😊',1800);return}go(0,k)};room.insertBefore(b,night)}
 function label(){for(const k in OB){$('#ob-'+k).innerHTML=OB[k].e+'<span>'+OB[k].l+(S.up[k]&&UP[k]?' '+'★'.repeat(S.up[k]):'')+'</span>';const nk=OB[k].need||(OB[k].buy?k:'');$('#ob-'+k).style.display=(OB[k].r|0)!==view||(nk&&!S.up[nk])?'none':''}}
 NM.forEach((p,i)=>{const e=document.createElement('div');e.className='me'+(i?' f':'');e.style.background=p[1];
   e.innerHTML='<div class="pb"></div><div class="bub"></div><div class="face">'+(i?'👩':'🧑')+'</div><div class="emo">🙂</div><div class="nm">'+p[0]+'</div>';
@@ -224,15 +224,15 @@ function requestSariAI(){
   window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_decision_request',context:{
     needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,
     room:(c.rm|0)?'taman':'rumah',relationship:Math.floor(S.rel),
-    currentAction:R[1].cur?OB[R[1].cur.k].n:'santai',options
+    currentAction:R[1].cur?OB[R[1].cur.k].n:'santai',request:window.__sariPendingRequest||'',options
   }}));
   return true;
 }
 window.__receiveSariAI=function(result){
   window.__sariAIThinking=false;
   if(R[1].cur)return;
-  if(!result||!sariActionAvailable(result.action)){R[1].idle=0;auto(1);return;}
-  R[1].idle=0;
+  if(!result||!sariActionAvailable(result.action)){window.__sariPendingRequest='';R[1].idle=0;auto(1);return;}
+  window.__sariPendingRequest='';R[1].idle=0;
   if(typeof result.dialogue==='string'&&result.dialogue.trim())say(1,result.dialogue.trim().slice(0,100),2600);
   go(1,result.action);
 };
@@ -445,13 +445,13 @@ function auto(i){const c=S.ch[i],n=c.n,hr=(S.t%1440)/60,k=Object.keys(n).sort((a
   R[i].idle=0;go(i,t)}
 function mood(c){const v=Object.values(c.n);return v.reduce((a,b)=>a+b,0)/v.length}
 $('#ba').onclick=()=>{sfx('tap');say(sel,sel===0?'Budi tetap kamu yang mengendalikan.':(window.__sariAIReady?'Sari dikendalikan Gemma lokal.':'AI Sari belum siap.'),2200)};
-$('#bg').onclick=()=>{const c=S.ch[sel],m=mood(c);sfx('tap');
-  if(m>60){c.n.sosial=Math.min(100,c.n.sosial+12);say(sel,pk(['Hai! 😊','Halo juga~','Senang disapa!']),2200)}
-  else if(m>35)say(sel,pk(['Hmm, iya?','Hai…']),2000);
-  else say(sel,pk(['Nanti dulu ya…','Lagi capek…','Aku butuh sesuatu dulu…']),2200)};
-$('#bh').onclick=()=>{if(S.money<10){sfx('no');say(sel,'Uang tidak cukup',1500);return}
-  const c=S.ch[sel];S.money-=10;c.n.hibur=Math.min(100,c.n.hibur+25);c.n.sosial=Math.min(100,c.n.sosial+8);S.rel=Math.min(100,S.rel+3);sfx('coin');say(sel,pk(['Wah, makasih! 🎁','Hadiah buat aku?','Baik banget~']),2400)};
-$('#bt').onclick=()=>{go(0,'sofa');go(1,'sofa');say(sel,'Yuk ngobrol!',1800)};
+$('#bg').onclick=()=>{const c=S.ch[1],m=mood(c);sfx('tap');
+  if(m>60){c.n.sosial=Math.min(100,c.n.sosial+12);S.rel=Math.min(100,S.rel+1);say(1,pk(['Hai Budi! 😊','Halo juga~','Senang kamu menyapa!']),2200)}
+  else if(m>35)say(1,pk(['Hmm, iya Budi?','Hai…','Ada apa?']),2000);
+  else say(1,pk(['Nanti dulu ya…','Lagi capek…','Aku butuh istirahat dulu…']),2200)};
+$('#bh').onclick=()=>{if(S.money<10){sfx('no');say(0,'Uang tidak cukup',1500);return}
+  const c=S.ch[1];S.money-=10;c.n.hibur=Math.min(100,c.n.hibur+25);c.n.sosial=Math.min(100,c.n.sosial+8);S.rel=Math.min(100,S.rel+3);sfx('coin');say(1,pk(['Wah, makasih Budi! 🎁','Hadiah buat aku?','Baik banget~']),2400)};
+$('#bt').onclick=()=>{window.__sariPendingRequest='Budi mengajak Sari ngobrol di sofa. Pertimbangkan ajakan ini, tetapi pilih sendiri apakah menerima dengan pergi ke sofa atau melanjutkan aktivitas lain.';go(0,'sofa');say(0,'Kamu mengajak Sari ngobrol.',1800)};
 $('#spd').onclick=()=>{speed=speed===1?2:speed===2?4:1;$('#spd').textContent=speed+'x';sfx('tap')};
 let rq=0,rq2=0;
 $('#reset').onclick=()=>{const b=$('#reset');

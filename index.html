@@ -206,12 +206,11 @@ for(const k in NAMA){const d=document.createElement('div');d.className='nd';d.in
 function pick(i){sel=i;sfx('tap');if((S.ch[i].rm|0)!==view)setView(S.ch[i].rm|0);R.forEach((r,j)=>{r.el.classList.toggle('sel',j===i);r.tab.classList.toggle('on',j===i)});render()}
 
 function place(i,x,y,dur){const e=R[i].el;e.style.setProperty('--d',dur+'ms');e.style.left=x+'%';e.style.top=y+'%';S.ch[i].x=x;S.ch[i].y=y}
-function say(i,t,ms){if(i===1&&!window.__sariGemmaSpeaking)return;const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
-function sayGemma(t,ms){if(typeof t!=='string'||!t.trim())return;window.__sariGemmaSpeaking=true;try{say(1,t.trim().slice(0,90),ms||2600)}finally{window.__sariGemmaSpeaking=false}}
+function say(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
 const cost=k=>k==='kulkas'?Math.max(3,15-4*(S.up.kulkas|0)):(OB[k].cost||0);
 const lvl=c=>LV.reduce((a,l,j)=>c.work>=l.h*60?j:a,0);
 
-// Jembatan WebView: simulasi menentukan semua aksi; keluaran Gemma hanya boleh menjadi komentar.
+// Jembatan WebView: Gemma hanya memilih aksi untuk Sari. Game tetap memvalidasi aksi.
 function sariActionAvailable(k){
   const o=OB[k];if(!o)return false;
   const locked=o.need||(o.buy?k:'');
@@ -219,32 +218,23 @@ function sariActionAvailable(k){
 }
 function requestSariAI(){
   if(window.__sariAIThinking||!window.__sariAIReady||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;
-  const c=S.ch[1],action=R[1].cur?OB[R[1].cur.k]:null;
+  const c=S.ch[1],options=Object.keys(OB).filter(sariActionAvailable).map(k=>({key:k,name:OB[k].n,object:OB[k].l,cost:cost(k),duration:OB[k].m}));
+  if(!options.length)return false;
   window.__sariAIThinking=true;
-  window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_comment_request',context:{
+  window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_decision_request',context:{
     needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,
     room:(c.rm|0)?'taman':'rumah',relationship:Math.floor(S.rel),
-    currentAction:action?action.n:'sedang santai',phase:R[1].cur?R[1].cur.phase:'diam',
-    event:action?(R[1].cur.phase==='walk'?'sedang menuju '+action.l:'sedang '+action.n):'sedang tidak melakukan aktivitas',
-    recentComments:window.__sariRecentComments||[]
+    currentAction:R[1].cur?OB[R[1].cur.k].n:'santai',request:window.__sariPendingRequest||'',options
   }}));
   return true;
 }
 window.__receiveSariAI=function(result){
   window.__sariAIThinking=false;
-  window.__sariPendingRequest='';
-  if(result&&typeof result.dialogue==='string'&&result.dialogue.trim()){
-    const line=result.dialogue.trim().replace(/^["'“”]+|["'“”]+$/g,'').slice(0,90);
-    if(line){
-      window.__sariRecentComments=window.__sariRecentComments||[];
-      if(!window.__sariRecentComments.includes(line)){
-        window.__sariRecentComments.push(line);
-        if(window.__sariRecentComments.length>6)window.__sariRecentComments.shift();
-        sayGemma(line,2600);
-      }
-    }
-  }
-  // Hanya teks dari Gemma yang boleh menjadi bubble. Aksi AI selalu diabaikan.
+  if(R[1].cur)return;
+  if(!result||!sariActionAvailable(result.action)){window.__sariPendingRequest='';R[1].idle=0;auto(1);return;}
+  window.__sariPendingRequest='';R[1].idle=0;
+  if(typeof result.dialogue==='string'&&result.dialogue.trim())say(1,result.dialogue.trim().slice(0,100),2600);
+  go(1,result.action);
 };
 
 function go(i,k){if((S.ch[i].rm|0)!==(OB[k].r|0))return viaDoor(i,k);
@@ -278,8 +268,9 @@ function tick(){
       if(cu.left<=.001){const s=o.say;if(o.pay)sfx('coin');else sfx('done');stop(i);say(i,s)}
     }else if(c.n.energi<=0&&!cu){say(i,'Ngantuk berat… zzz');go(i,'kasur')}
     const low=Math.min(...Object.values(c.n)),bub=r.el.querySelector('.bub');
-    // Tidak ada bubble status bawaan. Komentar karakter hanya boleh berasal dari Gemma.
-    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>8){if(i===1){auto(i);if(!window.__sariAIThinking)requestSariAI()}else auto(i)}}else r.idle=0;
+    if(!r.cur&&low<30&&!bub.classList.contains('show')){const k=Object.keys(c.n).find(x=>c.n[x]===low);
+      say(i,{lapar:'Perutku keroncongan…',energi:'Capek banget…',bersih:'Perlu mandi…',hibur:'Bosan…',sosial:'Kesepian…'}[k],2500)}
+    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>25){if(i===1){if(!window.__sariAIThinking&&!requestSariAI())auto(i)}else auto(i)}}else r.idle=0;
   });
   render();
   if(Date.now()-lastSave>2000){lastSave=Date.now();try{localStorage.setItem('rumahmungil2',JSON.stringify(S))}catch(e){}}

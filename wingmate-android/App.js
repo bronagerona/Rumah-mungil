@@ -42,14 +42,13 @@ export default function App() {
     inferenceRef.current=true;
     try{
       const s=msg.context||{};
-      const prompt='You are the autonomous wingmate combat AI in a vertical arcade shooter RPG. Choose exactly one action from: defend, focus_boss, attack, patrol. Use the live state, enemy positions/types, threat, health, boss presence, and skill readiness to decide what the companion should do now. defend means evade/clear nearby hostile projectiles when danger is high; focus_boss means prioritize boss damage if a boss exists; attack means strike a nearby enemy; patrol means hold a safe supporting role when no urgent target exists. Do not invent actions. Return ONLY valid JSON: {"action":"one_allowed_action"}. No markdown. State: '+JSON.stringify(s);
-      const result=await ctxRef.current.completion({prompt,n_predict:48,temperature:0.15});
-      const raw=String(result?.text||''),start=raw.indexOf('{'),end=raw.lastIndexOf('}');
-      if(start<0||end<=start)throw new Error('AI response was not JSON');
-      const parsed=JSON.parse(raw.slice(start,end+1));
-      const action=ACTIONS.includes(parsed.action)?parsed.action:null;
+      const prompt='You control a separate companion aircraft in a vertical shooter. Read the state and choose ONE action based on current danger and targets. DEFEND = move to protect/evade threats near companion; FOCUS_BOSS = attack boss if present; ATTACK = pursue nearest enemy; PATROL = move in a supporting formation near player when no urgent target. Reply with exactly one word, no punctuation: defend, focus_boss, attack, or patrol. State: '+JSON.stringify(s);
+      const result=await ctxRef.current.completion({prompt,n_predict:12,temperature:0});
+      const raw=String(result?.text||'').trim().toLowerCase();
+      const normalized=raw.replace(/[^a-z_]/g,' ').split(/\\s+/).find(token=>ACTIONS.includes(token));
+      const action=normalized||null;
       sendResult({action});
-      setStatus(action?'AI LOKAL AKTIF · keputusan: '+action.toUpperCase():'AI lokal merespons, format keputusan tidak valid');
+      setStatus(action?'AI LOKAL AKTIF · keputusan: '+action.toUpperCase():'AI lokal merespons, format keputusan tidak valid · '+raw.slice(0,42));
     }catch(e){sendResult({action:null});setStatus('AI lokal gagal memberi keputusan; periksa logika model/prompt.')}
     finally{inferenceRef.current=false}
   }

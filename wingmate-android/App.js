@@ -5,7 +5,7 @@ import {WebView} from 'react-native-webview';
 import {initLlama} from 'llama.rn';
 
 const ACTIONS = ['collect_drop','protect_player'];
-const GAME_KNOWLEDGE = 'Kamu adalah Wingmate, asisten lokal PROJECT WINGMATE. Jawab dalam bahasa Indonesia, singkat dan jujur. Fakta game: game shooter vertikal dengan 100 stage; pemain menggerakkan pesawat dengan menyentuh dan menggeser jari; tembakan pemain otomatis. Setiap stage memerlukan 50 kill sebelum boss muncul setelah musuh yang tersisa habis; setiap stage kelipatan 10 memiliki elite boss. Musuh menjatuhkan EXP dan GOLD/kredit; kredit dapat dipakai membeli upgrade senjata/damage seharga 35 GOLD. Ada tiga tingkat kesulitan: Easy, Hard, Very Hard. Pilot memiliki HP; jika HP habis misi gagal. Companion Wingmate tidak memiliki HP terpisah dan ikut kalah saat pemain kalah. AI lokal hanya memilih mode collect_drop atau protect_player, bukan koordinat gerak rinci. Jika HP pemain di atas 50%, AI harus memilih collect_drop; game kemudian mengarahkan companion ke drop terdekat. Jika HP 50% atau kurang, AI harus memilih protect_player; game mengarahkan companion mendekati pemain dan Magnet Pulse otomatis aktif saat cooldown siap untuk menghapus peluru musuh di radius sekitar pemain. Magnet Pulse juga menarik drop di sekitar companion dan memberi damage area pada musuh/boss. Skill pilot Wing Pulse aktif otomatis tiap 10 detik. Companion menembak musuh otomatis. Jangan mengaku melihat status real-time yang tidak diberikan prompt. Jika tidak yakin, katakan tidak yakin.';
+const GAME_KNOWLEDGE = 'Konteks singkat PROJECT WINGMATE: shooter vertikal 100 stage; Joni mengendalikan pesawat dengan sentuhan dan geseran jari, tembakan otomatis. Tiap stage perlu 50 kill sebelum boss; stage kelipatan 10 memiliki elite boss. Musuh menjatuhkan EXP dan GOLD. Upgrade senjata dan damage punya biaya berbeda yang meningkat. Pilot punya HP; jika habis, misi gagal. Wingmate adalah partner AI tanpa HP terpisah. Wing Pulse otomatis tiap 10 detik. Magnet Pulse dapat membersihkan peluru sekitar Joni, menarik drop, dan memberi damage area. Jangan menjelaskan detail teknis AI kecuali Joni bertanya. Jangan mengaku tahu status permainan langsung jika tidak diberikan.';
 export default function App() {
   const [ready,setReady]=useState(false),[busy,setBusy]=useState(false);
   const [status,setStatus]=useState('Pilih dua model GGUF: SmolLM untuk battle dan model pilihan untuk chat.');
@@ -89,10 +89,13 @@ export default function App() {
       inferenceRef.current=true;
       try{
         const userText=String(msg.text||'').trim().slice(0,500);if(!userText){sendNativeMessage({type:'chat_reply',text:''});return}
-        const prior=chatHistoryRef.current.slice(-8).map(m=>(m.role==='user'?'Pemain: ':'Wingmate: ')+m.text).join('\n');
-        const prompt=GAME_KNOWLEDGE+'\nRiwayat chat terakhir:\n'+prior+'\nPemain: '+userText+'\nWingmate:';
-        const result=await ctxRef.current.completion({prompt,n_predict:180,temperature:0.35});
-        const answer=String(result&&result.text||'').trim();
+        const prior=chatHistoryRef.current.slice(-4).map(m=>(m.role==='user'?'Joni berkata: ':'Aku menjawab: ')+m.text).join('\n');
+        const prompt='Kamu adalah Wingmate, partner AI yang sedang berbicara LANGSUNG dengan Joni. Balas dalam bahasa Indonesia yang santai, alami, dan ringkas. Hanya ada dua pihak: Joni dan Wingmate. Jangan pernah menyebut atau menulis kata "pemain" sebagai sebutan untuk Joni. Jangan menulis label nama, dialog tambahan, narasi, daftar fakta game, atau meneruskan percakapan sendiri. Jawab hanya pesan terbaru Joni. Biasanya cukup 1 kalimat; maksimal 2 kalimat pendek. Jika Joni hanya menyatakan sesuatu, balas secara wajar dan jangan mengulang tutorial. Gunakan konteks game hanya jika relevan.\n'+GAME_KNOWLEDGE+'\nRiwayat hanya untuk konteks, jangan dilanjutkan:\n'+prior+'\nPesan terbaru dari Joni: '+userText+'\nBalasan Wingmate (teks balasan saja):';
+        const result=await ctxRef.current.completion({prompt,n_predict:72,temperature:0.22});
+        let answer=String(result&&result.text||'').trim();
+        answer=answer.replace(/^\s*(?:Wingmate|Assistant|Bot)\s*[:：-]\s*/i,'').split(/\n\s*(?:Joni|Pemain|User|Human|Wingmate|Assistant|Bot)\s*[:：]/i)[0].trim();
+        answer=answer.replace(/\bPemain\b/gi,'Joni').replace(/^(?:Joni|KAMU)\s*[:：-]\s*/i,'').trim();
+        if(answer.length>360)answer=answer.slice(0,357).replace(/\s+\S*$/,'')+'…';
         if(!answer)throw new Error('Model tidak menghasilkan jawaban.');
         chatHistoryRef.current.push({role:'user',text:userText},{role:'assistant',text:answer});
         if(chatHistoryRef.current.length>12)chatHistoryRef.current=chatHistoryRef.current.slice(-12);

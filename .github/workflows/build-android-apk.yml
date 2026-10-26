@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - gemma-llama-android
+      - fix-sari-ai-build27
     paths:
       - "android-app/**"
       - "index.html"

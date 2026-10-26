@@ -305,7 +305,7 @@ function checkLongProgress(){ensureLongProgress();let changed=false;for(const g 
 /* ---------- jembatan keputusan AI lokal Sari ---------- */
 function sariActionAvailable(k){const o=OB[k];if(!o)return false;const locked=o.need||(o.buy?k:'');return (o.r|0)===(S.ch[1].rm|0)&&(!locked||!!S.up[locked])&&S.money>=cost(k)&&openNow(k)}
 function requestSariAI(){if(window.__sariAIThinking||!window.__sariAIReady||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;const c=S.ch[1],options=Object.keys(OB).filter(sariActionAvailable).map(k=>({key:k,name:OB[k].n,object:OB[k].l,cost:cost(k),duration:OB[k].m}));if(!options.length)return false;window.__sariAIThinking=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_decision_request',context:{needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,room:(c.rm|0)===0?'rumah':String(c.rm),relationship:Math.floor(S.rel),currentAction:R[1].cur?OB[R[1].cur.k].n:'santai',request:window.__sariPendingRequest||'',options}}));return true}
-window.__receiveSariAI=function(result){window.__sariAIThinking=false;if(R[1].cur)return;if(!result||!sariActionAvailable(result.action)){window.__sariPendingRequest='';R[1].idle=20;return}window.__sariPendingRequest='';if(typeof result.dialogue==='string'&&result.dialogue.trim())say(1,result.dialogue.trim().slice(0,100),2600);go(1,result.action)};
+window.__receiveSariAI=function(result){window.__sariAIThinking=false;if(R[1].cur)return;if(!result||!sariActionAvailable(result.action)){window.__sariPendingRequest='';R[1].idle=0;auto(1);return}window.__sariPendingRequest='';R[1].idle=0;if(typeof result.dialogue==='string'&&result.dialogue.trim())say(1,result.dialogue.trim().slice(0,100),2600);go(1,result.action)};
 
 function tick(){if(S.over)return;
   const dt=.6*speed;S.t+=dt;const dn=Math.floor(S.t/1440);if(dn>(S.day|0))newDay(dn);petTick(dt);kidTick(dt);nbTick(dt);chatTick();balTick(dt);locTick(dt);if(++gt%20===0){goals();checkLongProgress()}
@@ -324,7 +324,7 @@ function tick(){if(S.over)return;
     const low=Math.min(...Object.values(c.n)),bub=r.el.querySelector('.bub');
     if(!r.cur&&low<30&&!bub.classList.contains('show')){const k=Object.keys(c.n).find(x=>c.n[x]===low);
       say(i,{lapar:'Perutku keroncongan…',energi:'Capek banget…',bersih:'Perlu mandi…',hibur:'Bosan…',sosial:'Kesepian…'}[k],2500)}
-    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>25){if(i===1){if(!window.__sariAIThinking&&!requestSariAI())r.idle=20}else auto(i)}}else r.idle=0;
+    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>25){if(i===1){if(!window.__sariAIThinking&&!requestSariAI())auto(i)}else auto(i)}}else r.idle=0;
   });
   render();
   if(Date.now()-lastSave>2000){lastSave=Date.now();try{localStorage.setItem('rumahmungil2',JSON.stringify(S))}catch(e){}}

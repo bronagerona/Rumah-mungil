@@ -98,25 +98,25 @@ export default function App() {
         const history=chatHistoryRef.current.slice(-4);
         const buildPrompt=(withHistory)=>{
           if(isGemma){
-            let p='<start_of_turn>user\\n'+instructions+(gameContext?'\\n'+gameContext:'')+'\\nGunakan instruksi ini hanya untuk menjawab pertanyaan Joni berikutnya.\\n<end_of_turn>\\n';
-            if(withHistory)history.forEach(m=>{p+='<start_of_turn>'+(m.role==='user'?'user':'model')+'\\n'+m.text+'<end_of_turn>\\n'});
-            return p+'<start_of_turn>user\\n'+userText+'<end_of_turn>\\n<start_of_turn>model\\n';
+            let p='<start_of_turn>user\n'+instructions+(gameContext?'\n'+gameContext:'')+'\nGunakan instruksi ini hanya untuk menjawab pertanyaan Joni berikutnya.\n<end_of_turn>\n';
+            if(withHistory)history.forEach(m=>{p+='<start_of_turn>'+(m.role==='user'?'user':'model')+'\n'+m.text+'<end_of_turn>\n'});
+            return p+'<start_of_turn>user\n'+userText+'<end_of_turn>\n<start_of_turn>model\n';
           }
-          let p='<|im_start|>system\\n'+instructions+(gameContext?'\\n'+gameContext:'')+'<|im_end|>\\n';
-          if(withHistory)history.forEach(m=>{p+='<|im_start|>'+(m.role==='user'?'user':'assistant')+'\\n'+m.text+'<|im_end|>\\n'});
-          return p+'<|im_start|>user\\n'+userText+'<|im_end|>\\n<|im_start|>assistant\\n';
+          let p='<|im_start|>system\n'+instructions+(gameContext?'\n'+gameContext:'')+'<|im_end|>\n';
+          if(withHistory)history.forEach(m=>{p+='<|im_start|>'+(m.role==='user'?'user':'assistant')+'\n'+m.text+'<|im_end|>\n'});
+          return p+'<|im_start|>user\n'+userText+'<|im_end|>\n<|im_start|>assistant\n';
         };
-        const cleanAnswer=raw=>String(raw||'').replace(/<\\|im_end\\|>|<\\|im_start\\|>.*$/s,'').replace(/<end_of_turn>[\\s\\S]*$/i,'').replace(/^\\s*(?:Wingmate|Assistant|Bot)\\s*[:：-]\\s*/i,'').split(/\\n\\s*(?:Joni|Pemain|User|Human|Wingmate|Assistant|Bot)\\s*[:：]/i)[0].replace(/^[\\s*#>\\-`~•]+|[\\s*#>\\-`~•]+$/g,'').replace(/\\bPemain\\b/gi,'Joni').trim();
-        const validAnswer=text=>/[a-zA-Z0-9À-ÿ]/.test(text)&&text.replace(/[\\s*#>\\-`~•]/g,'').length>=2;
+        const cleanAnswer=raw=>String(raw||'').replace(/<\|im_end\|>|<\|im_start\|>.*$/s,'').replace(/<end_of_turn>[\s\S]*$/i,'').replace(/^\s*(?:Wingmate|Assistant|Bot)\s*[:：-]\s*/i,'').split(/\n\s*(?:Joni|Pemain|User|Human|Wingmate|Assistant|Bot)\s*[:：]/i)[0].replace(/^[\s*#>\-`~•]+|[\s*#>\-`~•]+$/g,'').replace(/\bPemain\b/gi,'Joni').trim();
+        const validAnswer=text=>/[a-zA-Z0-9À-ÿ]/.test(text)&&text.replace(/[\s*#>\-`~•]/g,'').length>=2;
         let result=await ctxRef.current.completion({prompt:buildPrompt(true),n_predict:64,temperature:0.25});
         let answer=cleanAnswer(result&&result.text);
         if(!validAnswer(answer)){
-          const retryPrompt=isGemma?'<start_of_turn>user\\nJawab dengan satu kalimat bahasa Indonesia yang wajar. Jangan tulis markdown atau simbol. Pertanyaan Joni: '+userText+'<end_of_turn>\\n<start_of_turn>model\\n':'<|im_start|>user\\nJawab dengan satu kalimat bahasa Indonesia yang wajar. Jangan tulis markdown atau simbol. Pertanyaan Joni: '+userText+'<|im_end|>\\n<|im_start|>assistant\\n';
+          const retryPrompt=isGemma?'<start_of_turn>user\nJawab dengan satu kalimat bahasa Indonesia yang wajar. Jangan tulis markdown atau simbol. Pertanyaan Joni: '+userText+'<end_of_turn>\n<start_of_turn>model\n':'<|im_start|>user\nJawab dengan satu kalimat bahasa Indonesia yang wajar. Jangan tulis markdown atau simbol. Pertanyaan Joni: '+userText+'<|im_end|>\n<|im_start|>assistant\n';
           result=await ctxRef.current.completion({prompt:retryPrompt,n_predict:48,temperature:0.2});
           answer=cleanAnswer(result&&result.text);
         }
         if(!validAnswer(answer))throw new Error('Model memberi teks yang tidak terbaca. Coba kirim pesan sekali lagi.');
-        if(answer.length>300)answer=answer.slice(0,297).replace(/\\s+\\S*$/,'')+'…';
+        if(answer.length>300)answer=answer.slice(0,297).replace(/\s+\S*$/,'')+'…';
         chatHistoryRef.current.push({role:'user',text:userText},{role:'assistant',text:answer});
         if(chatHistoryRef.current.length>12)chatHistoryRef.current=chatHistoryRef.current.slice(-12);
         sendNativeMessage({type:'chat_reply',text:answer});

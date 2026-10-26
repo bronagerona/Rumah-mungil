@@ -219,6 +219,9 @@ const mk=i=>({n:{lapar:70,energi:80,bersih:80,hibur:60,sosial:60},x:i?58:42,y:58
 const START=()=>({t:420,money:40,dif:1,up:{},rel:0,day:0,pl:80,goals:{},nb:{rel:[5,5,5],v:[]},hh:7,lv:1,xp:0,wk:50,fm:50,tk:0,bb:0,fu:{},over:0,ch:[mk(0),mk(1)]});
 let S=START(),R=[{cur:null,to:0},{cur:null,to:0}],sel=0,speed=1,lastSave=0,musicOn=true,sfxOn=true;
 try{const r=localStorage.getItem('rumahmungil2');if(r){const o=JSON.parse(r);if(o&&o.ch&&o.ch.length===2){S=Object.assign(START(),o);S.ch.forEach((c,i)=>{if(c.auto===undefined)c.auto=i?1:0})}}}catch(e){}
+// Kunci kendali: Budi dikendalikan pemain, Sari selalu mengambil keputusan lewat AI lokal.
+S.ch[0].auto=0;S.ch[1].auto=1;
+window.__sariAIThinking=false;window.__sariPendingRequest='';
 
 /* ---------- suara ---------- */
 let AC,mg,sg;
@@ -247,7 +250,7 @@ $('#bs').onclick=()=>{sfxOn=!sfxOn;$('#bs').classList.toggle('off',!sfxOn);sfx('
 
 /* ---------- elemen ---------- */
 const room=$('#room'),night=$('#night');
-for(const k in OB){const o=OB[k],b=document.createElement('button');b.className='ob';b.id='ob-'+k;b.style.left=o.x+'%';b.style.top=o.y+'%';b.setAttribute('aria-label',o.n);b.onclick=()=>go(sel,k);room.insertBefore(b,night)}
+for(const k in OB){const o=OB[k],b=document.createElement('button');b.className='ob';b.id='ob-'+k;b.style.left=o.x+'%';b.style.top=o.y+'%';b.setAttribute('aria-label',o.n);b.onclick=()=>{if(sel===1){say(1,'Aku memilih aktivitas sendiri ya 😊',1800);return}go(0,k)};room.insertBefore(b,night)}
 function label(){for(const k in OB){$('#ob-'+k).innerHTML=OB[k].e+'<span>'+OB[k].l+(S.up[k]&&UP[k]?' '+'★'.repeat(S.up[k]):'')+'</span>';const nk=OB[k].need||(OB[k].buy?k:'');$('#ob-'+k).style.display=(OB[k].r|0)!==view||OB[k].hid||(nk&&!S.up[nk])?'none':''}}
 NM.forEach((p,i)=>{const e=document.createElement('div');e.className='me'+(i?' f':'');e.style.background=p[1];
   e.innerHTML='<div class="pb"></div><div class="bub"></div><div class="face">'+(i?'👩':'🧑')+'</div><div class="emo">🙂</div><div class="nm">'+p[0]+'</div>';
@@ -613,14 +616,14 @@ function auto(i){const c=S.ch[i],n=c.n,hr=(S.t%1440)/60,k=Object.keys(n).sort((a
   if(t==='komputer'&&n.energi<30)t='kasur';
   if(!openNow(t))t=(hr>=22||hr<5)?'kasur':'sofa';R[i].idle=0;go(i,t)}
 function mood(c){const v=Object.values(c.n);return v.reduce((a,b)=>a+b,0)/v.length}
-$('#ba').onclick=()=>{const c=S.ch[sel];c.auto=c.auto?0:1;sfx('tap');render()};
+$('#ba').onclick=()=>{sfx('tap');say(sel,sel===0?'Budi tetap kamu yang mengendalikan.':(window.__sariAIReady?'Sari dikendalikan AI lokal.':'AI Sari belum siap.'),2200)};
 $('#bg').onclick=()=>{const c=S.ch[sel],m=mood(c);sfx('tap');famUp(.8,'sapa');
   if(m>60){c.n.sosial=Math.min(100,c.n.sosial+12);say(sel,pk(['Hai! 😊','Halo juga~','Senang disapa!']),2200)}
   else if(m>35)say(sel,pk(['Hmm, iya?','Hai…']),2000);
   else say(sel,pk(['Nanti dulu ya…','Lagi capek…','Aku butuh sesuatu dulu…']),2200)};
 $('#bh').onclick=()=>{if(S.money<10){sfx('no');say(sel,'Uang tidak cukup',1500);return}
   const c=S.ch[sel];S.money-=10;c.n.hibur=Math.min(100,c.n.hibur+25);c.n.sosial=Math.min(100,c.n.sosial+8);S.rel=Math.min(100,S.rel+3);famUp(2,'hadiah');sfx('coin');say(sel,pk(['Wah, makasih! 🎁','Hadiah buat aku?','Baik banget~']),2400)};
-$('#bt').onclick=()=>{famUp(3,'ajak');go(0,'sofa');go(1,'sofa');say(sel,'Yuk ngobrol!',1800)};
+$('#bt').onclick=()=>{famUp(3,'ajak');window.__sariPendingRequest='Budi mengajak Sari ngobrol di sofa';say(0,'Aku mengajak Sari ngobrol.',1800)};
 $('#spd').onclick=()=>{speed=speed===1?2:speed===2?4:1;$('#spd').textContent=speed+'x';sfx('tap')};
 let rq=0,rq2=0;
 $('#reset').onclick=()=>{const b=$('#reset');

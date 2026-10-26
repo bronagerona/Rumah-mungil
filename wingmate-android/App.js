@@ -4,7 +4,7 @@ import {pick, types, keepLocalCopy} from '@react-native-documents/picker';
 import {WebView} from 'react-native-webview';
 import {initLlama} from 'llama.rn';
 
-const ACTIONS = ['collect_drop'];
+const ACTIONS = ['collect_drop','protect_player'];
 export default function App() {
   const [ready,setReady]=useState(false),[busy,setBusy]=useState(false);
   const [status,setStatus]=useState('Pilih model GGUF lokal. Game dibuka setelah tes AI berhasil.');
@@ -42,8 +42,8 @@ export default function App() {
     inferenceRef.current=true;
     try{
       const s=msg.context||{};
-      const prompt='You are the autonomous wingmate companion in a vertical shooter. Your ONLY valid mode is collect_drop. Output exactly collect_drop, no explanation. Seek the nearest EXP or GOLD drop. Context: '+JSON.stringify({nearbyDrops:Number(s.nearbyDrops)||0,drops:s.drops,player:s.player,companion:s.companion});
-      const result=await ctxRef.current.completion({prompt,n_predict:8,temperature:0,grammar:'root ::= "collect_drop"'});
+      const hpPercent=Number(s.hpPercent)||0;const prompt='You are the tactical AI wingmate companion in a vertical shooter. Choose exactly one action. If player HP is ABOVE 50%, choose collect_drop and prioritize EXP/GOLD drops. If player HP is 50% OR BELOW, choose protect_player: stay near the player and prioritize using Magnet Pulse to clear nearby enemy bullets when its cooldown is ready. Keep shooting in either mode. Obey the HP threshold strictly. Output exactly collect_drop or protect_player, no explanation. Context: '+JSON.stringify({hp:Number(s.hp)||0,hpPercent,hpMax:Number(s.hpMax)||100,threat:!!s.threat,nearbyDrops:Number(s.nearbyDrops)||0,drops:s.drops,player:s.player,companion:s.companion});
+      const result=await ctxRef.current.completion({prompt,n_predict:8,temperature:0,grammar:'root ::= "collect_drop" | "protect_player"'});
       const raw=String(result?.text||'').trim().toLowerCase();
       const normalized=raw.replace(/[^a-z_]/g,' ').split(/\s+/).find(token=>ACTIONS.includes(token));
       const action=normalized||null;

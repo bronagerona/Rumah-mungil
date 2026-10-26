@@ -4,7 +4,7 @@ import {pick, types, keepLocalCopy} from '@react-native-documents/picker';
 import {WebView} from 'react-native-webview';
 import {initLlama} from 'llama.rn';
 
-const ACTIONS = ['defend','collect_drop'];
+const ACTIONS = ['collect_drop'];
 export default function App() {
   const [ready,setReady]=useState(false),[busy,setBusy]=useState(false);
   const [status,setStatus]=useState('Pilih model GGUF lokal. Game dibuka setelah tes AI berhasil.');
@@ -42,8 +42,8 @@ export default function App() {
     inferenceRef.current=true;
     try{
       const s=msg.context||{};
-      const prompt='You are the autonomous wingmate companion in a vertical shooter. Choose exactly ONE mode: defend or collect_drop. Choose collect_drop when any EXP or GOLD drops are available, prioritizing the nearest drop. Choose defend when no drops are available or an immediate bullet threat requires protecting the player. Output exactly one token, no explanation. Context: '+JSON.stringify({threat:!!s.threat,nearbyDrops:Number(s.nearbyDrops)||0,drops:s.drops,player:s.player,companion:s.companion});
-      const result=await ctxRef.current.completion({prompt,n_predict:8,temperature:0,grammar:'root ::= "defend" | "collect_drop"'});
+      const prompt='You are the autonomous wingmate companion in a vertical shooter. Your ONLY valid mode is collect_drop. Output exactly collect_drop, no explanation. Seek the nearest EXP or GOLD drop. Context: '+JSON.stringify({nearbyDrops:Number(s.nearbyDrops)||0,drops:s.drops,player:s.player,companion:s.companion});
+      const result=await ctxRef.current.completion({prompt,n_predict:8,temperature:0,grammar:'root ::= "collect_drop"'});
       const raw=String(result?.text||'').trim().toLowerCase();
       const normalized=raw.replace(/[^a-z_]/g,' ').split(/\s+/).find(token=>ACTIONS.includes(token));
       const action=normalized||null;

@@ -89,14 +89,34 @@ export default function App() {
       inferenceRef.current=true;
       try{
         const userText=String(msg.text||'').trim().slice(0,500);if(!userText){sendNativeMessage({type:'chat_reply',text:''});return}
-        const prior=chatHistoryRef.current.slice(-4).map(m=>(m.role==='user'?'Joni berkata: ':'Aku menjawab: ')+m.text).join('\n');
-        const prompt='Kamu adalah Wingmate, partner AI yang sedang berbicara LANGSUNG dengan Joni. Balas dalam bahasa Indonesia yang santai, alami, dan ringkas. Hanya ada dua pihak: Joni dan Wingmate. Jangan pernah menyebut atau menulis kata "pemain" sebagai sebutan untuk Joni. Jangan menulis label nama, dialog tambahan, narasi, daftar fakta game, atau meneruskan percakapan sendiri. Jawab hanya pesan terbaru Joni. Biasanya cukup 1 kalimat; maksimal 2 kalimat pendek. Jika Joni hanya menyatakan sesuatu, balas secara wajar dan jangan mengulang tutorial. Gunakan konteks game hanya jika relevan.\n'+GAME_KNOWLEDGE+'\nRiwayat hanya untuk konteks, jangan dilanjutkan:\n'+prior+'\nPesan terbaru dari Joni: '+userText+'\nBalasan Wingmate (teks balasan saja):';
-        const result=await ctxRef.current.completion({prompt,n_predict:72,temperature:0.22});
-        let answer=String(result&&result.text||'').trim();
-        answer=answer.replace(/^\s*(?:Wingmate|Assistant|Bot)\s*[:：-]\s*/i,'').split(/\n\s*(?:Joni|Pemain|User|Human|Wingmate|Assistant|Bot)\s*[:：]/i)[0].trim();
-        answer=answer.replace(/\bPemain\b/gi,'Joni').replace(/^(?:Joni|KAMU)\s*[:：-]\s*/i,'').trim();
-        if(answer.length>360)answer=answer.slice(0,357).replace(/\s+\S*$/,'')+'…';
-        if(!answer)throw new Error('Model tidak menghasilkan jawaban.');
+        const modelName=String(modelsRef.current.chat&&modelsRef.current.chat.name||'').toLowerCase();
+        const isGemma=/gemma/i.test(modelName);
+        const isQwen=/qwen/i.test(modelName);
+        const isGameQuestion=/game|stage|boss|upgrade|gold|exp|wing pulse|magnet pulse|cara main|pesawat|skill|senjata|misi/i.test(userText);
+        const instructions='Kamu Wingmate, teman AI Joni. Jawab langsung pesan Joni dalam bahasa Indonesia yang santai dan masuk akal. Jawab hanya pesan terakhir, biasanya satu atau dua kalimat. Jangan menulis nama pembicara, dialog tambahan, markdown, daftar, atau simbol dekoratif. Jangan menyebut Joni sebagai pemain. Jika tidak tahu, katakan dengan jujur.';
+        const gameContext=isGameQuestion?GAME_KNOWLEDGE:'';
+        const history=chatHistoryRef.current.slice(-4);
+        const buildPrompt=(withHistory)=>{
+          if(isGemma){
+            let p='<start_of_turn>user\\n'+instructions+(gameContext?'\\n'+gameContext:'')+'\\nGunakan instruksi ini hanya untuk menjawab pertanyaan Joni berikutnya.\\n<end_of_turn>\\n';
+            if(withHistory)history.forEach(m=>{p+='<start_of_turn>'+(m.role==='user'?'user':'model')+'\\n'+m.text+'<end_of_turn>\\n'});
+            return p+'<start_of_turn>user\\n'+userText+'<end_of_turn>\\n<start_of_turn>model\\n';
+          }
+          let p='<|im_start|>system\\n'+instructions+(gameContext?'\\n'+gameContext:'')+'<|im_end|>\\n';
+          if(withHistory)history.forEach(m=>{p+='<|im_start|>'+(m.role==='user'?'user':'assistant')+'\\n'+m.text+'<|im_end|>\\n'});
+          return p+'<|im_start|>user\\n'+userText+'<|im_end|>\\n<|im_start|>assistant\\n';
+        };
+        const cleanAnswer=raw=>String(raw||'').replace(/<\\|im_end\\|>|<\\|im_start\\|>.*$/s,'').replace(/<end_of_turn>[\\s\\S]*$/i,'').replace(/^\\s*(?:Wingmate|Assistant|Bot)\\s*[:：-]\\s*/i,'').split(/\\n\\s*(?:Joni|Pemain|User|Human|Wingmate|Assistant|Bot)\\s*[:：]/i)[0].replace(/^[\\s*#>\\-`~•]+|[\\s*#>\\-`~•]+$/g,'').replace(/\\bPemain\\b/gi,'Joni').trim();
+        const validAnswer=text=>/[a-zA-Z0-9À-ÿ]/.test(text)&&text.replace(/[\\s*#>\\-`~•]/g,'').length>=2;
+        let result=await ctxRef.current.completion({prompt:buildPrompt(true),n_predict:64,temperature:0.25});
+        let answer=cleanAnswer(result&&result.text);
+        if(!validAnswer(answer)){
+          const retryPrompt=isGemma?'<start_of_turn>user\\nJawab dengan satu kalimat bahasa Indonesia yang wajar. Jangan tulis markdown atau simbol. Pertanyaan Joni: '+userText+'<end_of_turn>\\n<start_of_turn>model\\n':'<|im_start|>user\\nJawab dengan satu kalimat bahasa Indonesia yang wajar. Jangan tulis markdown atau simbol. Pertanyaan Joni: '+userText+'<|im_end|>\\n<|im_start|>assistant\\n';
+          result=await ctxRef.current.completion({prompt:retryPrompt,n_predict:48,temperature:0.2});
+          answer=cleanAnswer(result&&result.text);
+        }
+        if(!validAnswer(answer))throw new Error('Model memberi teks yang tidak terbaca. Coba kirim pesan sekali lagi.');
+        if(answer.length>300)answer=answer.slice(0,297).replace(/\\s+\\S*$/,'')+'…';
         chatHistoryRef.current.push({role:'user',text:userText},{role:'assistant',text:answer});
         if(chatHistoryRef.current.length>12)chatHistoryRef.current=chatHistoryRef.current.slice(-12);
         sendNativeMessage({type:'chat_reply',text:answer});

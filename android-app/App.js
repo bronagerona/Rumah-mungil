@@ -64,9 +64,11 @@ export default function App() {
         body: JSON.stringify({
           model: GROQ_MODEL,
           messages: [
-            {role: 'system', content: system},
-            {role: 'user', content: JSON.stringify(context)},
+            {role: 'user', content: system + '\\nKONDISI GAME: ' + JSON.stringify(context)},
           ],
+          response_format: {type: 'json_object'},
+          reasoning_effort: 'low',
+          reasoning_format: 'hidden',
           max_completion_tokens: dialogueOnly ? 80 : 120,
           temperature: 0.4,
           stream: false,

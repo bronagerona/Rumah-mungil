@@ -62,6 +62,7 @@ jobs:
 
       - name: Copy game and cloud app source
         run: |
+          rm -f build-app/App.tsx
           cp android-app/App.js build-app/App.js
           mkdir -p build-app/android/app/src/main/assets
           cp index.html build-app/android/app/src/main/assets/index.html

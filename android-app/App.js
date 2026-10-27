@@ -53,7 +53,7 @@ export default function App() {
         'Jangan mengambil alih Budi, jangan mengarang keadaan game, dan jangan memakai markdown.',
         dialogueOnly
           ? `Balas hanya JSON valid berbentuk {"dialogue":"ucapan singkat"}. Jangan memilih aksi.`
-          : `Pilih tepat satu aksi dari context.options dengan memakai nilai key yang persis sama. Balas hanya JSON valid berbentuk {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.`;
+          : `Pilih tepat satu aksi dari context.options dengan memakai nilai key yang persis sama. Balas hanya JSON valid berbentuk {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.`
       ].join(' ');
       const response = await fetch(GROQ_URL, {
         method: 'POST',

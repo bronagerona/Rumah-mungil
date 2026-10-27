@@ -111,11 +111,11 @@ export default function App() {
       const prompt = dialogueOnly
         ? common +
           'Tugas: hasilkan hanya ucapan Sari untuk situasi ini. Balas hanya JSON valid dengan format {"dialogue":"ucapan singkat"}. ' +
-          'Jangan membuat aksi atau mengubah keadaan game.\\nKONDISI: ' + JSON.stringify(context)
+          'Jangan membuat aksi atau mengubah keadaan game.\nKONDISI: ' + JSON.stringify(context)
         : common +
           'Budi dikendalikan pemain; jangan mengambil alih Budi. Pilih tepat satu aksi dari daftar opsi yang diberikan, dengan mempertimbangkan kebutuhan, uang, waktu, lokasi, hubungan, dan permintaan Budi. ' +
           'Jangan mengarang aksi di luar daftar. Sertakan satu ucapan Sari yang cocok dengan situasi dan aksi yang dipilih. ' +
-          'Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.\\nKONDISI: ' + JSON.stringify(context);
+          'Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.\nKONDISI: ' + JSON.stringify(context);
       const result = await ctx.completion({
         prompt,
         n_predict: dialogueOnly ? 64 : 80,
@@ -127,7 +127,7 @@ export default function App() {
       if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
       const parsed = JSON.parse(raw.slice(start, end + 1));
       const dialogue = typeof parsed.dialogue === 'string'
-        ? parsed.dialogue.replace(/[\\r\\n]+/g, ' ').trim().slice(0, 100)
+        ? parsed.dialogue.replace(/[\r\n]+/g, ' ').trim().slice(0, 100)
         : '';
       if (dialogueOnly) {
         sendDecision({kind: 'dialogue', dialogue});

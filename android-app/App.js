@@ -90,39 +90,56 @@ export default function App() {
   async function onGameMessage(event) {
     let message;
     try { message = JSON.parse(event.nativeEvent.data); } catch (_) { return; }
-    if (message?.type !== 'sari_decision_request') return;
+    if (message?.type !== 'sari_decision_request' && message?.type !== 'sari_dialogue_request') return;
+    const dialogueOnly = message.type === 'sari_dialogue_request';
     if (!ctx || inferenceRef.current) {
-      sendDecision({action: null, dialogue: ''});
+      sendDecision(dialogueOnly
+        ? {kind: 'dialogue', dialogue: ''}
+        : {kind: 'decision', action: null, dialogue: ''});
       return;
     }
 
     inferenceRef.current = true;
     try {
       const context = message.context || {};
-      const prompt =
-        'Kamu adalah AI pengambil keputusan untuk Sari, karakter dalam game simulasi kehidupan Rumah Mungil. ' +
-        'Budi dikendalikan pemain, jadi jangan pernah mengambil alih Budi. ' +
-        'Pilih tepat satu aksi dari daftar opsi yang diberikan. Pertimbangkan kebutuhan Sari, uang, waktu, lokasi, hubungan, dan permintaan interaksi dari Budi. Sari boleh menerima atau menolak ajakan sesuai kondisinya. ' +
-        'Jangan mengarang aksi di luar daftar. Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"kalimat pendek bahasa Indonesia"}. ' +
-        'Dialog boleh kosong. Jangan sertakan markdown.\nKONDISI: ' + JSON.stringify(context);
+      const common =
+        'Kamu adalah Gemma, penulis ucapan Sari dalam game simulasi kehidupan Rumah Mungil. ' +
+        'Tulis ucapan yang terdengar alami, hangat, singkat, dan sesuai kepribadian serta situasi Sari. ' +
+        'Gunakan bahasa Indonesia sehari-hari. Maksimal satu kalimat dan satu baris, paling banyak 100 karakter. ' +
+        'Jangan menjelaskan proses berpikir, jangan menambahkan label pembicara, jangan memakai markdown, dan jangan menyalin mentah petunjuk situasi. ' +
+        'Petunjuk situasi hanya konteks, bukan teks yang harus diulang. ';
+      const prompt = dialogueOnly
+        ? common +
+          'Tugas: hasilkan hanya ucapan Sari untuk situasi ini. Balas hanya JSON valid dengan format {"dialogue":"ucapan singkat"}. ' +
+          'Jangan membuat aksi atau mengubah keadaan game.\\nKONDISI: ' + JSON.stringify(context)
+        : common +
+          'Budi dikendalikan pemain; jangan mengambil alih Budi. Pilih tepat satu aksi dari daftar opsi yang diberikan, dengan mempertimbangkan kebutuhan, uang, waktu, lokasi, hubungan, dan permintaan Budi. ' +
+          'Jangan mengarang aksi di luar daftar. Sertakan satu ucapan Sari yang cocok dengan situasi dan aksi yang dipilih. ' +
+          'Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.\\nKONDISI: ' + JSON.stringify(context);
       const result = await ctx.completion({
         prompt,
-        n_predict: 96,
-        temperature: 0.35,
+        n_predict: dialogueOnly ? 64 : 80,
+        temperature: 0.45,
       });
       const raw = String(result?.text || '');
       const start = raw.indexOf('{');
       const end = raw.lastIndexOf('}');
       if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
       const parsed = JSON.parse(raw.slice(start, end + 1));
-      const options = Array.isArray(context.options) ? context.options : [];
-      const action = options.some(item => item.key === parsed.action) ? parsed.action : null;
-      sendDecision({
-        action,
-        dialogue: typeof parsed.dialogue === 'string' ? parsed.dialogue.slice(0, 100) : '',
-      });
+      const dialogue = typeof parsed.dialogue === 'string'
+        ? parsed.dialogue.replace(/[\\r\\n]+/g, ' ').trim().slice(0, 100)
+        : '';
+      if (dialogueOnly) {
+        sendDecision({kind: 'dialogue', dialogue});
+      } else {
+        const options = Array.isArray(context.options) ? context.options : [];
+        const action = options.some(item => item.key === parsed.action) ? parsed.action : null;
+        sendDecision({kind: 'decision', action, dialogue});
+      }
     } catch (e) {
-      sendDecision({action: null, dialogue: ''});
+      sendDecision(dialogueOnly
+        ? {kind: 'dialogue', dialogue: ''}
+        : {kind: 'decision', action: null, dialogue: ''});
     } finally {
       inferenceRef.current = false;
     }

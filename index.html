@@ -263,7 +263,7 @@ function pick(i){sel=i;sfx('tap');if(S.ch[i].rm>=0&&(S.ch[i].rm|0)!==view)setVie
 function place(i,x,y,dur){const e=R[i].el;e.style.setProperty('--d',dur+'ms');e.style.left=x+'%';e.style.top=y+'%';S.ch[i].x=x;S.ch[i].y=y}
 function showBubble(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
 function isSariSystemMessage(t){return /^(Sedang di perjalanan|Belum buka|Waktunya tidak cukup|Uang tidak cukup|Terlalu jauh|Belum cukup dekat|Sudah tutup|Naik jabatan:|Berangkat ke |Ngobrol dengan |AI Sari belum siap|Sari dikendalikan AI lokal|Budi tetap kamu yang mengendalikan|Model belum siap)/i.test(String(t||''))}
-function say(i,t,ms){if(i===1&&window.__sariAIReady&&!window.__sariInternalSpeak&&!isSariSystemMessage(t)){requestSariDialogue(String(t||''),ms);return}showBubble(i,t,ms)}
+function say(i,t,ms){if(i===1&&!window.__sariInternalSpeak&&!isSariSystemMessage(t)){if(window.__sariAIReady)requestSariDialogue(String(t||''),ms);return}showBubble(i,t,ms)}
 const cost=k=>k==='kulkas'?Math.max(3,15-4*(S.up.kulkas|0)):(OB[k].gymfee&&S.up.gym?0:(OB[k].cost||0));
 const lvl=c=>LV.reduce((a,l,j)=>c.work>=l.h*60?j:a,0);
 

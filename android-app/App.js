@@ -65,7 +65,7 @@ export default function App() {
       setCtx(next);
       next = null;
       setReady(true);
-      setStatus('model lokal siap · Sari dikendalikan AI lokal · Budi dikendalikan pemain');
+      setStatus('Model lokal siap · Gerakan Sari otomatis · Gemma untuk dialog');
     } catch (e) {
       const code = String(e?.code || '').toLowerCase();
       if (code.includes('cancel')) {
@@ -90,9 +90,14 @@ export default function App() {
   async function onGameMessage(event) {
     let message;
     try { message = JSON.parse(event.nativeEvent.data); } catch (_) { return; }
-    if (message?.type !== 'sari_decision_request') return;
-    if (!ctx || inferenceRef.current) {
-      sendDecision({action: null, dialogue: ''});
+    // Gemma hanya membuat dialog; keputusan dan gerakan Sari ditangani sistem game.
+    if (message?.type !== 'sari_dialogue_request') return;
+    if (inferenceRef.current) {
+      sendDecision({kind: 'busy'});
+      return;
+    }
+    if (!ctx) {
+      sendDecision({kind: 'dialogue', dialogue: ''});
       return;
     }
 
@@ -100,29 +105,28 @@ export default function App() {
     try {
       const context = message.context || {};
       const prompt =
-        'Kamu adalah AI pengambil keputusan untuk Sari, karakter dalam game simulasi kehidupan Rumah Mungil. ' +
-        'Budi dikendalikan pemain, jadi jangan pernah mengambil alih Budi. ' +
-        'Pilih tepat satu aksi dari daftar opsi yang diberikan. Pertimbangkan kebutuhan Sari, uang, waktu, lokasi, hubungan, dan permintaan interaksi dari Budi. Sari boleh menerima atau menolak ajakan sesuai kondisinya. ' +
-        'Jangan mengarang aksi di luar daftar. Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"kalimat pendek bahasa Indonesia"}. ' +
-        'Dialog boleh kosong. Jangan sertakan markdown.\nKONDISI: ' + JSON.stringify(context);
+        'Kamu adalah Gemma, penulis ucapan Sari dalam game simulasi kehidupan Rumah Mungil. ' +
+        'Tulis ucapan bahasa Indonesia sehari-hari yang alami, hangat, singkat, dan sesuai situasi. ' +
+        'Maksimal satu kalimat, satu baris, paling banyak 100 karakter. ' +
+        'Jangan menjelaskan proses berpikir, jangan menambahkan label pembicara, jangan memakai markdown, dan jangan menyalin mentah petunjuk situasi. ' +
+        'Kamu hanya menulis dialog: jangan memilih aksi, mengendalikan gerakan, atau mengubah keadaan game. ' +
+        'Balas hanya JSON valid dengan format {"dialogue":"ucapan singkat"}. KONDISI: ' + JSON.stringify(context);
       const result = await ctx.completion({
         prompt,
-        n_predict: 96,
-        temperature: 0.35,
+        n_predict: 64,
+        temperature: 0.45,
       });
       const raw = String(result?.text || '');
-      const start = raw.indexOf('{');
-      const end = raw.lastIndexOf('}');
-      if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
-      const parsed = JSON.parse(raw.slice(start, end + 1));
-      const options = Array.isArray(context.options) ? context.options : [];
-      const action = options.some(item => item.key === parsed.action) ? parsed.action : null;
-      sendDecision({
-        action,
-        dialogue: typeof parsed.dialogue === 'string' ? parsed.dialogue.slice(0, 100) : '',
-      });
+      const startJson = raw.indexOf('{');
+      const endJson = raw.lastIndexOf('}');
+      if (startJson < 0 || endJson <= startJson) throw new Error('Respons AI bukan JSON.');
+      const parsed = JSON.parse(raw.slice(startJson, endJson + 1));
+      const dialogue = typeof parsed.dialogue === 'string'
+        ? parsed.dialogue.replace(/\s+/g, ' ').trim().slice(0, 100)
+        : '';
+      sendDecision({kind: 'dialogue', dialogue});
     } catch (e) {
-      sendDecision({action: null, dialogue: ''});
+      sendDecision({kind: 'dialogue', dialogue: ''});
     } finally {
       inferenceRef.current = false;
     }

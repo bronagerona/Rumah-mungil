@@ -1,0 +1,86 @@
+name: Build Groq Cloud APK
+
+on:
+  push:
+    branches:
+      - main
+      - feat/sari-groq-cloud-fast-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: groq-cloud-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build cloud-only Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-groq-cloud-${{ hashFiles('android-app/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-groq-cloud-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-groq-cloud-${{ hashFiles('android-app/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-groq-cloud-
+
+      - name: Generate React Native Android project
+        run: npx --yes @react-native-community/cli@20.0.0 init RumahMungil --version 0.87.1 --directory build-app --skip-install --pm npm
+
+      - name: Install app dependencies
+        working-directory: build-app
+        run: |
+          npm install --no-audit --no-fund
+          npm install react-native-webview@13.16.1 --save --no-audit --no-fund
+
+      - name: Copy game and cloud app source
+        run: |
+          cp android-app/App.js build-app/App.js
+          mkdir -p build-app/android/app/src/main/assets
+          cp index.html build-app/android/app/src/main/assets/index.html
+
+      - name: Bundle React Native JavaScript
+        working-directory: build-app
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+
+      - name: Build debug APK
+        working-directory: build-app/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rumah-mungil-groq-cloud-debug-apk
+          path: build-app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

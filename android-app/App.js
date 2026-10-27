@@ -116,17 +116,36 @@ export default function App() {
         n_predict: 64,
         temperature: 0.45,
       });
-      const raw = String(result?.text || '');
+      const raw = String(result?.text || '').trim();
+      let dialogue = '';
+      // Model kecil kadang mengabaikan format JSON; coba JSON dulu, lalu teks biasa.
       const startJson = raw.indexOf('{');
       const endJson = raw.lastIndexOf('}');
-      if (startJson < 0 || endJson <= startJson) throw new Error('Respons AI bukan JSON.');
-      const parsed = JSON.parse(raw.slice(startJson, endJson + 1));
-      const dialogue = typeof parsed.dialogue === 'string'
-        ? parsed.dialogue.replace(/\s+/g, ' ').trim().slice(0, 100)
-        : '';
+      if (startJson >= 0 && endJson > startJson) {
+        try {
+          const parsed = JSON.parse(raw.slice(startJson, endJson + 1));
+          if (typeof parsed.dialogue === 'string') dialogue = parsed.dialogue;
+        } catch (_) {
+          const match = raw.match(/\"dialogue\"\s*:\s*\"([^\"]+)\"/i);
+          if (match) dialogue = match[1];
+        }
+      }
+      if (!dialogue) {
+        dialogue = raw
+          .replace(/<\|[^|]+\|>/g, ' ')
+          .replace(/^\s*(assistant|sari|dialogue)\s*[:：-]\s*/i, '')
+          .replace(/^\s*\{\s*\"dialogue\"\s*:\s*\"?/i, '')
+          .replace(/\"?\s*\}\s*$/i, '')
+          .replace(/[\r\n]+/g, ' ')
+          .trim();
+      }
+      dialogue = dialogue.replace(/\s+/g, ' ').replace(/^[\"']|[\"']$/g, '').trim().slice(0, 100);
+      if (!dialogue || dialogue.startsWith('{') || dialogue.startsWith('```')) {
+        dialogue = 'Aku lagi mikir sebentar, tapi aku senang menemanimu 😊';
+      }
       sendDecision({kind: 'dialogue', dialogue});
     } catch (e) {
-      sendDecision({kind: 'dialogue', dialogue: ''});
+      sendDecision({kind: 'dialogue', dialogue: 'Aku senang menemanimu 😊'});
     } finally {
       inferenceRef.current = false;
     }

@@ -65,7 +65,7 @@ export default function App() {
       setCtx(next);
       next = null;
       setReady(true);
-      setStatus('model lokal siap · Sari dikendalikan AI lokal · Budi dikendalikan pemain');
+      setStatus('Model lokal siap · Gerakan Sari otomatis · Gemma untuk dialog');
     } catch (e) {
       const code = String(e?.code || '').toLowerCase();
       if (code.includes('cancel')) {
@@ -90,60 +90,43 @@ export default function App() {
   async function onGameMessage(event) {
     let message;
     try { message = JSON.parse(event.nativeEvent.data); } catch (_) { return; }
-    if (message?.type !== 'sari_decision_request' && message?.type !== 'sari_dialogue_request') return;
-    const dialogueOnly = message.type === 'sari_dialogue_request';
+    // Gemma hanya membuat dialog; keputusan dan gerakan Sari ditangani sistem game.
+    if (message?.type !== 'sari_dialogue_request') return;
     if (inferenceRef.current) {
       sendDecision({kind: 'busy'});
       return;
     }
     if (!ctx) {
-      sendDecision(dialogueOnly
-        ? {kind: 'dialogue', dialogue: ''}
-        : {kind: 'decision', action: null, dialogue: ''});
+      sendDecision({kind: 'dialogue', dialogue: ''});
       return;
     }
 
     inferenceRef.current = true;
     try {
       const context = message.context || {};
-      const common =
+      const prompt =
         'Kamu adalah Gemma, penulis ucapan Sari dalam game simulasi kehidupan Rumah Mungil. ' +
-        'Tulis ucapan yang terdengar alami, hangat, singkat, dan sesuai kepribadian serta situasi Sari. ' +
-        'Gunakan bahasa Indonesia sehari-hari. Maksimal satu kalimat dan satu baris, paling banyak 100 karakter. ' +
+        'Tulis ucapan bahasa Indonesia sehari-hari yang alami, hangat, singkat, dan sesuai situasi. ' +
+        'Maksimal satu kalimat, satu baris, paling banyak 100 karakter. ' +
         'Jangan menjelaskan proses berpikir, jangan menambahkan label pembicara, jangan memakai markdown, dan jangan menyalin mentah petunjuk situasi. ' +
-        'Petunjuk situasi hanya konteks, bukan teks yang harus diulang. ';
-      const prompt = dialogueOnly
-        ? common +
-          'Tugas: hasilkan hanya ucapan Sari untuk situasi ini. Balas hanya JSON valid dengan format {"dialogue":"ucapan singkat"}. ' +
-          'Jangan membuat aksi atau mengubah keadaan game.\nKONDISI: ' + JSON.stringify(context)
-        : common +
-          'Budi dikendalikan pemain; jangan mengambil alih Budi. Pilih tepat satu aksi dari daftar opsi yang diberikan, dengan mempertimbangkan kebutuhan, uang, waktu, lokasi, hubungan, dan permintaan Budi. ' +
-          'Jangan mengarang aksi di luar daftar. Sertakan satu ucapan Sari yang cocok dengan situasi dan aksi yang dipilih. ' +
-          'Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.\nKONDISI: ' + JSON.stringify(context);
+        'Kamu hanya menulis dialog: jangan memilih aksi, mengendalikan gerakan, atau mengubah keadaan game. ' +
+        'Balas hanya JSON valid dengan format {"dialogue":"ucapan singkat"}.\\nKONDISI: ' + JSON.stringify(context);
       const result = await ctx.completion({
         prompt,
-        n_predict: dialogueOnly ? 64 : 80,
+        n_predict: 64,
         temperature: 0.45,
       });
       const raw = String(result?.text || '');
-      const start = raw.indexOf('{');
-      const end = raw.lastIndexOf('}');
-      if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
-      const parsed = JSON.parse(raw.slice(start, end + 1));
+      const startJson = raw.indexOf('{');
+      const endJson = raw.lastIndexOf('}');
+      if (startJson < 0 || endJson <= startJson) throw new Error('Respons AI bukan JSON.');
+      const parsed = JSON.parse(raw.slice(startJson, endJson + 1));
       const dialogue = typeof parsed.dialogue === 'string'
-        ? parsed.dialogue.replace(/[\r\n]+/g, ' ').trim().slice(0, 100)
+        ? parsed.dialogue.replace(/[\\r\\n]+/g, ' ').trim().slice(0, 100)
         : '';
-      if (dialogueOnly) {
-        sendDecision({kind: 'dialogue', dialogue});
-      } else {
-        const options = Array.isArray(context.options) ? context.options : [];
-        const action = options.some(item => item.key === parsed.action) ? parsed.action : null;
-        sendDecision({kind: 'decision', action, dialogue});
-      }
+      sendDecision({kind: 'dialogue', dialogue});
     } catch (e) {
-      sendDecision(dialogueOnly
-        ? {kind: 'dialogue', dialogue: ''}
-        : {kind: 'decision', action: null, dialogue: ''});
+      sendDecision({kind: 'dialogue', dialogue: ''});
     } finally {
       inferenceRef.current = false;
     }

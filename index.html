@@ -261,7 +261,9 @@ for(const k in NAMA){const d=document.createElement('div');d.className='nd';d.in
 function pick(i){sel=i;sfx('tap');if(S.ch[i].rm>=0&&(S.ch[i].rm|0)!==view)setView(S.ch[i].rm|0);R.forEach((r,j)=>{r.el.classList.toggle('sel',j===i);r.tab.classList.toggle('on',j===i)});render()}
 
 function place(i,x,y,dur){const e=R[i].el;e.style.setProperty('--d',dur+'ms');e.style.left=x+'%';e.style.top=y+'%';S.ch[i].x=x;S.ch[i].y=y}
-function say(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
+function showBubble(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
+function isSariSystemMessage(t){return /^(Sedang di perjalanan|Belum buka|Waktunya tidak cukup|Uang tidak cukup|Terlalu jauh|Belum cukup dekat|Sudah tutup|Naik jabatan:|Berangkat ke |Ngobrol dengan |AI Sari belum siap|Sari dikendalikan AI lokal|Budi tetap kamu yang mengendalikan|Model belum siap)/i.test(String(t||''))}
+function say(i,t,ms){if(i===1&&!window.__sariInternalSpeak&&!isSariSystemMessage(t)){if(window.__sariAIReady)requestSariDialogue(String(t||''),ms);return}showBubble(i,t,ms)}
 const cost=k=>k==='kulkas'?Math.max(3,15-4*(S.up.kulkas|0)):(OB[k].gymfee&&S.up.gym?0:(OB[k].cost||0));
 const lvl=c=>LV.reduce((a,l,j)=>c.work>=l.h*60?j:a,0);
 
@@ -303,9 +305,11 @@ function checkLongProgress(){ensureLongProgress();let changed=false;for(const g 
 
 
 /* ---------- jembatan keputusan AI lokal Sari ---------- */
+function sariContext(event){const c=S.ch[1],roomNames=['rumah','taman','kantor','gym','kafe'];return {needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,room:roomNames[c.rm|0]||'rumah',relationship:Math.floor(S.rel),family:Math.floor(S.fm),currentAction:R[1].cur&&OB[R[1].cur.k]?OB[R[1].cur.k].n:'santai',request:window.__sariPendingRequest||'',event:String(event||'').slice(0,140),history:typeof CL!=='undefined'?CL.slice(-4).map(l=>({speaker:l[0],text:l[2]})):[]}}
+function requestSariDialogue(cue,ms){if(!window.__sariAIReady||window.__sariAIThinking||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;window.__sariAIThinking=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_dialogue_request',context:sariContext(cue)}));return true}
 function sariActionAvailable(k){const o=OB[k];if(!o)return false;const locked=o.need||(o.buy?k:'');return (o.r|0)===(S.ch[1].rm|0)&&(!locked||!!S.up[locked])&&S.money>=cost(k)}
-function requestSariAI(){if(window.__sariAIThinking||!window.__sariAIReady||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;const c=S.ch[1],options=Object.keys(OB).filter(sariActionAvailable).map(k=>({key:k,name:OB[k].n,object:OB[k].l,cost:cost(k),duration:OB[k].m}));if(!options.length)return false;window.__sariAIThinking=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_decision_request',context:{needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,room:(c.rm|0)?'taman':'rumah',relationship:Math.floor(S.rel),currentAction:R[1].cur?OB[R[1].cur.k].n:'santai',request:window.__sariPendingRequest||'',options}}));return true}
-window.__receiveSariAI=function(result){window.__sariAIThinking=false;if(R[1].cur)return;if(!result||!sariActionAvailable(result.action)){window.__sariPendingRequest='';R[1].idle=0;auto(1);return}window.__sariPendingRequest='';R[1].idle=0;if(typeof result.dialogue==='string'&&result.dialogue.trim())say(1,result.dialogue.trim().slice(0,100),2600);go(1,result.action)};
+function requestSariAI(){if(window.__sariAIThinking||!window.__sariAIReady||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;const c=S.ch[1],options=Object.keys(OB).filter(sariActionAvailable).map(k=>({key:k,name:OB[k].n,object:OB[k].l,cost:cost(k),duration:OB[k].m}));if(!options.length)return false;window.__sariAIThinking=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_decision_request',context:{...sariContext(window.__sariPendingRequest||''),options}}));return true}
+window.__receiveSariAI=function(result){if(result&&result.kind==='busy')return;window.__sariAIThinking=false;if(result&&result.kind==='dialogue'){const t=typeof result.dialogue==='string'?result.dialogue.replace(/[\r\n]+/g,' ').trim().slice(0,100):'';if(t){showBubble(1,t,2600);logLine(NM[1][0],CC[1],t);R[1].el.classList.add('talk');setTimeout(()=>R[1].el.classList.remove('talk'),2600)}R[1].idle=0;return}if(R[1].cur)return;if(!result||!sariActionAvailable(result.action)){window.__sariPendingRequest='';R[1].idle=0;auto(1);return}window.__sariPendingRequest='';R[1].idle=0;const t=typeof result.dialogue==='string'?result.dialogue.replace(/[\r\n]+/g,' ').trim().slice(0,100):'';if(t){showBubble(1,t,2600);logLine(NM[1][0],CC[1],t)}go(1,result.action)};
 
 function tick(){if(S.over)return;
   const dt=.6*speed;S.t+=dt;const dn=Math.floor(S.t/1440);if(dn>(S.day|0))newDay(dn);petTick(dt);kidTick(dt);nbTick(dt);chatTick();balTick(dt);locTick(dt);if(++gt%20===0){goals();checkLongProgress()}
@@ -491,6 +495,7 @@ function tintRoom(h){let c='#1a2260',o=.5,p='night';
 function renderChat(){$('#chat').innerHTML='<b>💬 Obrolan</b>'+(CL.length?CL.map(l=>'<div><b style="color:'+l[1]+'">'+l[0]+'</b>: '+l[2]+'</div>').join(''):'<div style="color:var(--mut)">Belum ada obrolan</div>')}
 function logLine(n,c,t){CL.push([n,c,t]);if(CL.length>4)CL.shift();renderChat()}
 function speak(t,i,x){const el=t==='c'?R[i].el:NBE[i],col=t==='c'?CC[i]:NC[i];
+  if(t==='c'&&i===1){requestSariDialogue('percakapan otomatis: '+x,2600);return}
   if(t==='c')say(i,x,2600);else nbSay(i,x);
   logLine(t==='c'?NM[i][0]:NB[i][0],col,x);
   el.style.setProperty('--tc',col);el.classList.add('talk');setTimeout(()=>el.classList.remove('talk'),2600);

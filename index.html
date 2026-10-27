@@ -178,9 +178,9 @@ button.chip.off{opacity:.45}
 <script>
 const $=s=>document.querySelector(s);
 const NAMA={lapar:'Lapar',energi:'Energi',bersih:'Bersih',hibur:'Hibur',sosial:'Sosial'};
-const DECAY={lapar:.08,energi:.06,bersih:.05,hibur:.07,sosial:.04};
+const DECAY={lapar:.045,energi:.035,bersih:.03,hibur:.04,sosial:.025};
 const OB={
-  kulkas:{x:14,y:33,e:'🧊',l:'Kulkas',n:'Makan',m:30,fx:{lapar:2},cost:15,say:'Nyam nyam!'},
+  kulkas:{x:14,y:33,e:'🧊',l:'Kulkas',n:'Makan',m:30,fx:{lapar:2},cost:6,say:'Nyam nyam!'},
   komputer:{r:2,hr:[8,17],x:32,y:44,e:'💻',l:'Kerja',n:'Kerja di kantor',m:240,fx:{energi:-.08,hibur:-.05},pay:1,say:'Gaji masuk!'},
   telepon:{x:86,y:33,e:'📱',l:'Telepon',n:'Ngobrol di telepon',m:40,fx:{sosial:1.5},say:'Seru ngobrolnya!'},
   tv:{x:84,y:61,e:'📺',l:'TV',n:'Nonton TV',m:60,fx:{hibur:.9},say:'Acaranya lucu.'},
@@ -189,17 +189,17 @@ const OB={
   sofa:{x:48,y:78,e:'🛋️',l:'Sofa',n:'Santai di sofa',m:60,fx:{sosial:.7,hibur:.3},say:'Nyaman banget.'},
   buku:{x:68,y:70,e:'📚',l:'Buku',n:'Baca buku',m:60,fx:{hibur:.55,energi:-.03},buy:1,say:'Ceritanya bagus!'},
   lukis:{x:31,y:51,e:'🎨',l:'Lukis',n:'Melukis',m:90,fx:{hibur:.5,energi:-.04},pay:.2,buy:1,say:'Lukisan laku terjual!'},
-  gym:{r:3,hr:[6,22],x:50,y:46,e:'🏋️',l:'Beban',n:'Angkat beban',m:45,cost:8,gymfee:1,fx:{hibur:.5,sosial:.1,bersih:-.5,lapar:-.4,energi:-.1},say:'Badan jadi segar!'},
+  gym:{r:3,hr:[6,22],x:50,y:46,e:'🏋️',l:'Beban',n:'Angkat beban',m:45,cost:4,gymfee:1,fx:{hibur:.5,sosial:.1,bersih:-.5,lapar:-.4,energi:-.1},say:'Badan jadi segar!'},
   kebun:{r:1,need:'taman',x:22,y:44,e:'🌻',l:'Kebun',n:'Berkebun',m:60,fx:{hibur:.45,bersih:-.25},pay:.15,say:'Panen sayur!'},
-  bbq:{r:1,need:'taman',x:74,y:44,e:'🍖',l:'BBQ',n:'Panggang BBQ',m:40,fx:{lapar:2.2,sosial:.5,hibur:.2},cost:10,say:'Enak banget!'},
+  bbq:{r:1,need:'taman',x:74,y:44,e:'🍖',l:'BBQ',n:'Panggang BBQ',m:40,fx:{lapar:2.2,sosial:.5,hibur:.2},cost:5,say:'Enak banget!'},
   bangku:{r:1,need:'taman',x:48,y:72,e:'🪑',l:'Bangku',n:'Duduk santai',m:45,fx:{hibur:.4,sosial:.5,energi:.04},say:'Udara segar.'},
   ngobrol:{x:50,y:62,e:'💬',l:'Ngobrol',n:'Ngobrol dengan tamu',m:25,fx:{sosial:1.4},here:1,hid:1,say:''},
-  pantry:{r:2,hr:[8,17],x:72,y:44,e:'☕',l:'Pantry',n:'Ngopi di pantry',m:20,fx:{hibur:.5,sosial:.5,energi:.06},cost:5,say:'Segar lagi!'},
-  treadmill:{r:3,hr:[6,22],x:24,y:44,e:'🏃',l:'Treadmill',n:'Lari di treadmill',m:40,fx:{hibur:.5,bersih:-.4,lapar:-.4,energi:-.1},cost:8,gymfee:1,say:'Keringat bercucuran!'},
-  yoga:{r:3,hr:[6,22],x:76,y:68,e:'🧘',l:'Yoga',n:'Yoga',m:40,fx:{hibur:.4,energi:.05,sosial:.1},cost:8,gymfee:1,say:'Tenang dan segar.'},
-  meja:{r:4,hr:[7,22],x:28,y:46,e:'🍰',l:'Meja',n:'Makan di kafe',m:40,fx:{lapar:3,hibur:.3,sosial:.3},cost:25,say:'Enak sekali!'},
-  kopi:{r:4,hr:[7,22],x:72,y:46,e:'☕',l:'Kopi',n:'Ngopi santai',m:25,fx:{energi:.25,hibur:.4,sosial:.5},cost:12,say:'Kopinya mantap.'},
-  musik:{r:4,hr:[7,22],x:50,y:70,e:'🎵',l:'Live music',n:'Nonton live music',m:45,fx:{hibur:.8,sosial:.4},cost:10,say:'Lagunya enak!'}
+  pantry:{r:2,hr:[8,17],x:72,y:44,e:'☕',l:'Pantry',n:'Ngopi di pantry',m:20,fx:{hibur:.5,sosial:.5,energi:.06},cost:2,say:'Segar lagi!'},
+  treadmill:{r:3,hr:[6,22],x:24,y:44,e:'🏃',l:'Treadmill',n:'Lari di treadmill',m:40,fx:{hibur:.5,bersih:-.4,lapar:-.4,energi:-.1},cost:4,gymfee:1,say:'Keringat bercucuran!'},
+  yoga:{r:3,hr:[6,22],x:76,y:68,e:'🧘',l:'Yoga',n:'Yoga',m:40,fx:{hibur:.4,energi:.05,sosial:.1},cost:4,gymfee:1,say:'Tenang dan segar.'},
+  meja:{r:4,hr:[7,22],x:28,y:46,e:'🍰',l:'Meja',n:'Makan di kafe',m:40,fx:{lapar:3,hibur:.3,sosial:.3},cost:12,say:'Enak sekali!'},
+  kopi:{r:4,hr:[7,22],x:72,y:46,e:'☕',l:'Kopi',n:'Ngopi santai',m:25,fx:{energi:.25,hibur:.4,sosial:.5},cost:6,say:'Kopinya mantap.'},
+  musik:{r:4,hr:[7,22],x:50,y:70,e:'🎵',l:'Live music',n:'Nonton live music',m:45,fx:{hibur:.8,sosial:.4},cost:5,say:'Lagunya enak!'}
 };
 const UP={
   kasur:['Kasur empuk','Energi tidur +50% per tingkat',150,.5],
@@ -216,7 +216,7 @@ const UP={
 const LV=[{n:'Magang',r:.3,h:0},{n:'Staf',r:.45,h:10},{n:'Senior',r:.62,h:30},{n:'Supervisor',r:.82,h:60},{n:'Asisten Manajer',r:1.05,h:100},{n:'Manajer',r:1.35,h:160},{n:'Manajer Senior',r:1.7,h:240},{n:'Direktur',r:2.2,h:350},{n:'Eksekutif',r:2.8,h:500}];
 const NM=[['Budi','#ffd9a8'],['Sari','#ffc2d9']];
 const mk=i=>({n:{lapar:70,energi:80,bersih:80,hibur:60,sosial:60},x:i?58:42,y:58,work:0,auto:i?1:0});
-const START=()=>({t:420,money:40,dif:1,up:{},rel:0,day:0,pl:80,goals:{},nb:{rel:[5,5,5],v:[]},hh:7,lv:1,xp:0,wk:50,fm:50,tk:0,bb:0,fu:{},over:0,ch:[mk(0),mk(1)]});
+const START=()=>({t:420,money:120,dif:0,up:{},rel:0,day:0,pl:80,goals:{},nb:{rel:[5,5,5],v:[]},hh:7,lv:1,xp:0,wk:50,fm:50,tk:0,bb:0,fu:{},over:0,ch:[mk(0),mk(1)]});
 let S=START(),R=[{cur:null,to:0},{cur:null,to:0}],sel=0,speed=1,lastSave=0,musicOn=true,sfxOn=true;
 try{const r=localStorage.getItem('rumahmungil2');if(r){const o=JSON.parse(r);if(o&&o.ch&&o.ch.length===2){S=Object.assign(START(),o);S.ch.forEach((c,i)=>{if(c.auto===undefined)c.auto=i?1:0})}}}catch(e){}
 // Kunci kendali: Budi dikendalikan pemain, Sari selalu mengambil keputusan lewat AI lokal.
@@ -432,7 +432,7 @@ $('#bp').onclick=()=>{const p=$('#pp');sfx('tap');if(p.style.display==='flex'){p
   L.forEach(([t,n])=>{const b=document.createElement('button');b.className='chip';b.textContent=n+(IMG[t]?' ✓':'');b.onclick=()=>{tgt=t;$('#pf').value='';$('#pf').click()};p.appendChild(b)});
   const r=document.createElement('button');r.className='chip';r.textContent='↺ Bawaan';r.onclick=()=>{IMG={};saveImg();skinChar(0);skinChar(1);p.style.display='none'};p.appendChild(r);p.style.display='flex'};
 $('#pf').onchange=e=>{const f=e.target.files[0];if(!f||tgt==null)return;loadImg(f,u=>{IMG[tgt]=u;saveImg();skinChar(0);skinChar(1);$('#pp').style.display='none';sfx('up')})};
-const DF=[{d:1,i:1,b:1},{d:1.4,i:.7,b:1.5},{d:1.8,i:.5,b:2.5}];
+const DF=[{d:.75,i:1.8,b:.65},{d:1,i:1.35,b:.85},{d:1.35,i:1,b:1.4}];
 const df=()=>DF[S.dif==null?1:S.dif];
 function difLabel(){$('#dif').textContent='Tingkat: '+['Normal','Menantang','Brutal'][S.dif==null?1:S.dif]}
 $('#dif').onclick=()=>{S.dif=((S.dif==null?1:S.dif)+1)%3;sfx('tap');difLabel()};
@@ -605,7 +605,7 @@ function newDay(dn){S.day=dn;const bm=balDay();S.nb.rel=S.nb.rel.map((r,i)=>S.nb
     ['Barang elektronik rusak −Rp 20rb',()=>{S.money=Math.max(0,S.money-20)}],
     ['Flu menyerang, energi turun.',()=>S.ch.forEach(c=>c.n.energi=Math.max(0,c.n.energi-25))],
     ['Cuaca panas, jadi cepat kotor.',()=>S.ch.forEach(c=>c.n.bersih=Math.max(0,c.n.bersih-25))]];
-  if(Math.random()<.7){const e=pk(E);e[1]();m+=e[0]}
+  if(Math.random()<.35){const e=pk(E.filter(x=>!x[0].includes('−')));e[1]();m+=e[0]}
   if(S.rel>=100&&!S.kid){S.kid={age:0,lapar:80,energi:80,hibur:80,sleep:0};kid.style.left='38%';kid.style.top='62%';m+=' Bayi Kiki lahir! 👶'}
   evt(m+(bm?' '+bm:''));sfx('tap');if($('#shop').classList.contains('open'))shop()}
 $('#bk').onclick=()=>{if(S.rel<25){sfx('no');say(sel,'Belum cukup dekat…',1800);return}

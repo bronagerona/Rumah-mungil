@@ -47,13 +47,15 @@ export default function App() {
     setStatus('Sari sedang berpikir lewat Groq…');
     try {
       const system = [
-        'Kamu adalah Sari, karakter teman serumah dalam game simulasi kehidupan Rumah Mungil.',
-        'Gunakan bahasa Indonesia sehari-hari yang hangat, alami, dan sesuai situasi.',
-        'Ucapan maksimal satu kalimat, satu baris, dan 100 karakter.',
-        'Jangan mengambil alih Budi, jangan mengarang keadaan game, dan jangan memakai markdown.',
+        'Kamu adalah Sari, teman serumah Budi dalam game simulasi kehidupan Rumah Mungil.',
+        'Balas dengan bahasa Indonesia yang benar, alami, hangat, dan mudah dipahami.',
+        'Tulis satu kalimat utuh yang relevan dengan kondisi game dan riwayat percakapan.',
+        'Jangan mengeluarkan kata acak, suku kata, kalimat terputus, atau teks setengah jadi.',
+        'Ucapan maksimal 80 karakter. Gunakan ejaan dan tata bahasa Indonesia yang wajar.',
+        'Jangan mengarang fakta, jangan mengambil alih Budi, dan jangan memakai markdown.',
         dialogueOnly
-          ? `Balas hanya JSON valid berbentuk {"dialogue":"ucapan singkat"}. Jangan memilih aksi.`
-          : `Pilih tepat satu aksi dari context.options dengan memakai nilai key yang persis sama. Balas hanya JSON valid berbentuk {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.`
+          ? 'Keluarkan hanya objek JSON valid dengan format {"dialogue":"kalimat utuh dalam bahasa Indonesia"}.'
+          : 'Pilih satu aksi yang persis cocok dengan salah satu context.options[].key. Keluarkan hanya objek JSON valid dengan format {"action":"KEY_AKSI","dialogue":"kalimat utuh dalam bahasa Indonesia"}.'
       ].join(' ');
       const response = await fetch(GROQ_URL, {
         method: 'POST',
@@ -64,13 +66,14 @@ export default function App() {
         body: JSON.stringify({
           model: GROQ_MODEL,
           messages: [
-            {role: 'user', content: system + '\nKONDISI GAME: ' + JSON.stringify(context)},
+            {role: 'system', content: system},
+            {role: 'user', content: 'KONDISI GAME DAN RIWAYAT: ' + JSON.stringify(context) + '\nBuat ucapan Sari yang wajar dan lengkap. Jangan menyalin kata-kata dari instruksi.'},
           ],
           response_format: {type: 'json_object'},
           reasoning_effort: 'low',
           reasoning_format: 'hidden',
-          max_completion_tokens: dialogueOnly ? 80 : 120,
-          temperature: 0.4,
+          max_completion_tokens: dialogueOnly ? 256 : 320,
+          temperature: 0.2,
           stream: false,
         }),
       });
@@ -80,13 +83,17 @@ export default function App() {
         throw new Error(detail);
       }
       const raw = String(data?.choices?.[0]?.message?.content || '');
-      const start = raw.indexOf('{');
-      const end = raw.lastIndexOf('}');
-      if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
-      const parsed = JSON.parse(raw.slice(start, end + 1));
-      const dialogue = typeof parsed.dialogue === 'string'
-        ? parsed.dialogue.replace(/[\\r\\n]+/g, ' ').trim().slice(0, 100)
+      const startJson = raw.indexOf('{');
+      const endJson = raw.lastIndexOf('}');
+      if (startJson < 0 || endJson <= startJson) throw new Error('Respons AI bukan JSON lengkap.');
+      const parsed = JSON.parse(raw.slice(startJson, endJson + 1));
+      let dialogue = typeof parsed.dialogue === 'string'
+        ? parsed.dialogue.replace(/[\\r\\n]+/g, ' ').replace(/\\s+/g, ' ').trim()
         : '';
+      // Hindari menampilkan keluaran yang tampak seperti potongan kalimat atau kata acak.
+      if (dialogue.length > 80) dialogue = dialogue.slice(0, 80).replace(/\\s+\\S*$/, '').trim();
+      if (dialogue && !/[.!?…😊🙂😄❤️]$/.test(dialogue)) dialogue += '.';
+      if (dialogue && (dialogue.split(/\\s+/).length < 2 || !/[a-zA-ZÀ-ÿ]/.test(dialogue))) dialogue = '';
       if (dialogueOnly) {
         sendDecision({kind: 'dialogue', dialogue});
       } else {

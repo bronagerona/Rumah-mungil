@@ -261,7 +261,9 @@ for(const k in NAMA){const d=document.createElement('div');d.className='nd';d.in
 function pick(i){sel=i;sfx('tap');if(S.ch[i].rm>=0&&(S.ch[i].rm|0)!==view)setView(S.ch[i].rm|0);R.forEach((r,j)=>{r.el.classList.toggle('sel',j===i);r.tab.classList.toggle('on',j===i)});render()}
 
 function place(i,x,y,dur){const e=R[i].el;e.style.setProperty('--d',dur+'ms');e.style.left=x+'%';e.style.top=y+'%';S.ch[i].x=x;S.ch[i].y=y}
-function say(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
+function isSariSystemMessage(t){return /^(Sedang di perjalanan|Belum buka|Waktunya tidak cukup|Uang tidak cukup|Terlalu jauh|Belum cukup dekat|Sudah tutup|Naik jabatan:|Berangkat ke |Ngobrol dengan |AI Sari belum siap|Sari dikendalikan AI lokal|Budi tetap kamu yang mengendalikan|Model belum siap)/i.test(String(t||''))}
+function say(i,t,ms){if(i===1&&!window.__sariInternalSpeak&&!isSariSystemMessage(t)){if(window.__sariAIReady)requestSariDialogue(String(t||''));else showBubble(i,t,ms);return}showBubble(i,t,ms)}
+function showBubble(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
 const cost=k=>k==='kulkas'?Math.max(3,15-4*(S.up.kulkas|0)):(OB[k].gymfee&&S.up.gym?0:(OB[k].cost||0));
 const lvl=c=>LV.reduce((a,l,j)=>c.work>=l.h*60?j:a,0);
 
@@ -302,10 +304,11 @@ function renderLongProgress(){ensureLongProgress();const host=$('#longProgress')
 function checkLongProgress(){ensureLongProgress();let changed=false;for(const g of LONG_GOALS){if(!S.long.claimed[g.id]&&g.check()){S.long.claimed[g.id]=1;S.long.xp+=g.xp;S.money+=g.reward;changed=true;evt('🎉 Target tercapai: '+g.title+' · +Rp'+g.reward+'rb · +'+g.xp+' XP');sfx('up')}}if(changed){renderLongProgress();if($('#shop').classList.contains('open'))shop()}}
 
 
-/* ---------- jembatan keputusan AI lokal Sari ---------- */
-function sariActionAvailable(k){const o=OB[k];if(!o)return false;const locked=o.need||(o.buy?k:'');return (o.r|0)===(S.ch[1].rm|0)&&(!locked||!!S.up[locked])&&S.money>=cost(k)&&openNow(k)}
-function requestSariAI(){if(window.__sariAIThinking||!window.__sariAIReady||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;const c=S.ch[1],options=Object.keys(OB).filter(sariActionAvailable).map(k=>({key:k,name:OB[k].n,object:OB[k].l,cost:cost(k),duration:OB[k].m}));if(!options.length)return false;window.__sariAIThinking=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_decision_request',context:{needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,room:(c.rm|0)===0?'rumah':String(c.rm),relationship:Math.floor(S.rel),currentAction:R[1].cur?OB[R[1].cur.k].n:'santai',request:window.__sariPendingRequest||'',options}}));return true}
-window.__receiveSariAI=function(result){window.__sariAIThinking=false;if(R[1].cur)return;if(!result||!sariActionAvailable(result.action)){window.__sariPendingRequest='';R[1].idle=20;return}window.__sariPendingRequest='';if(typeof result.dialogue==='string'&&result.dialogue.trim())say(1,result.dialogue.trim().slice(0,100),2600);go(1,result.action)};
+/* ---------- jembatan dialog Gemma; gerakan Sari oleh sistem game ---------- */
+window.__sariAIThinking=window.__sariAIThinking||false;
+function requestSariDialogue(event){if(!window.__sariAIReady||window.__sariAIThinking||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;const c=S.ch[1];window.__sariAIThinking=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_dialogue_request',context:{needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,room:(c.rm|0)===0?'rumah':String(c.rm),relationship:Math.floor(S.rel),currentAction:R[1].cur&&OB[R[1].cur.k]?OB[R[1].cur.k].n:'santai',event:String(event||'').slice(0,120)}}));return true}
+window.__receiveSariAI=function(result){window.__sariAIThinking=false;if(!result||result.kind==='busy')return;if(result.kind==='dialogue'&&typeof result.dialogue==='string'&&result.dialogue.trim()){showBubble(1,result.dialogue.trim().slice(0,100),2600)}};
+
 
 function tick(){if(S.over)return;
   const dt=.6*speed;S.t+=dt;const dn=Math.floor(S.t/1440);if(dn>(S.day|0))newDay(dn);petTick(dt);kidTick(dt);nbTick(dt);chatTick();balTick(dt);locTick(dt);if(++gt%20===0){goals();checkLongProgress()}
@@ -324,7 +327,7 @@ function tick(){if(S.over)return;
     const low=Math.min(...Object.values(c.n)),bub=r.el.querySelector('.bub');
     if(!r.cur&&low<30&&!bub.classList.contains('show')){const k=Object.keys(c.n).find(x=>c.n[x]===low);
       say(i,{lapar:'Perutku keroncongan…',energi:'Capek banget…',bersih:'Perlu mandi…',hibur:'Bosan…',sosial:'Kesepian…'}[k],2500)}
-    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>25){if(i===1){if(!window.__sariAIThinking&&!requestSariAI())r.idle=20}else auto(i)}}else r.idle=0;
+    if(!r.cur){r.idle=(r.idle||0)+1;if((i===1||c.auto)&&r.idle>25){auto(i)}}else r.idle=0;
   });
   render();
   if(Date.now()-lastSave>2000){lastSave=Date.now();try{localStorage.setItem('rumahmungil2',JSON.stringify(S))}catch(e){}}

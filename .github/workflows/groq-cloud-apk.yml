@@ -3,7 +3,6 @@ name: Build Groq Cloud APK
 on:
   push:
     branches:
-      - main
       - feat/sari-groq-cloud-fast-build
   workflow_dispatch:
 

@@ -110,7 +110,7 @@ export default function App() {
         'Maksimal satu kalimat, satu baris, paling banyak 100 karakter. ' +
         'Jangan menjelaskan proses berpikir, jangan menambahkan label pembicara, jangan memakai markdown, dan jangan menyalin mentah petunjuk situasi. ' +
         'Kamu hanya menulis dialog: jangan memilih aksi, mengendalikan gerakan, atau mengubah keadaan game. ' +
-        'Balas hanya JSON valid dengan format {"dialogue":"ucapan singkat"}.\\nKONDISI: ' + JSON.stringify(context);
+        'Balas hanya JSON valid dengan format {"dialogue":"ucapan singkat"}. KONDISI: ' + JSON.stringify(context);
       const result = await ctx.completion({
         prompt,
         n_predict: 64,
@@ -122,7 +122,7 @@ export default function App() {
       if (startJson < 0 || endJson <= startJson) throw new Error('Respons AI bukan JSON.');
       const parsed = JSON.parse(raw.slice(startJson, endJson + 1));
       const dialogue = typeof parsed.dialogue === 'string'
-        ? parsed.dialogue.replace(/[\\r\\n]+/g, ' ').trim().slice(0, 100)
+        ? parsed.dialogue.replace(/\s+/g, ' ').trim().slice(0, 100)
         : '';
       sendDecision({kind: 'dialogue', dialogue});
     } catch (e) {

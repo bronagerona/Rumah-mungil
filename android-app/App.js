@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -18,14 +18,12 @@ export default function App() {
   const [apiKey, setApiKey] = useState('');
   const [gameVisible, setGameVisible] = useState(false);
   const [status, setStatus] = useState('Masukkan API key Groq untuk memulai.');
+  const webRef = useRef(null);
 
   function sendDecision(result) {
     const js = 'window.__receiveSariAI(' + JSON.stringify(result) + '); true;';
-    webRef?.injectJavaScript?.(js);
+    webRef.current?.injectJavaScript?.(js);
   }
-
-  const [webRefValue, setWebRefValue] = useState(null);
-  const webRef = webRefValue;
 
   async function onGameMessage(event) {
     let message;
@@ -156,7 +154,7 @@ export default function App() {
       </View>
       {gameVisible ? (
         <WebView
-          ref={setWebRefValue}
+          ref={webRef}
           style={styles.game}
           source={{uri: 'file:///android_asset/index.html'}}
           javaScriptEnabled
@@ -164,7 +162,7 @@ export default function App() {
           allowFileAccess
           originWhitelist={['*']}
           onMessage={onGameMessage}
-          onLoadEnd={() => webRefValue?.injectJavaScript('window.__sariAIReady=true; true;')}
+          onLoadEnd={() => webRef.current?.injectJavaScript('window.__sariAIReady=true; true;')}
         />
       ) : (
         <View style={styles.loader}>

@@ -328,7 +328,7 @@ function tick(){if(S.over)return;
     const low=Math.min(...Object.values(c.n)),bub=r.el.querySelector('.bub');
     if(!r.cur&&low<30&&!bub.classList.contains('show')){const k=Object.keys(c.n).find(x=>c.n[x]===low);
       say(i,{lapar:'Perutku keroncongan…',energi:'Capek banget…',bersih:'Perlu mandi…',hibur:'Bosan…',sosial:'Kesepian…'}[k],2500)}
-    if(!r.cur){r.idle=(r.idle||0)+1;if(c.auto&&r.idle>25){if(i===1){if(!window.__sariAIThinking&&!requestSariAI())auto(i)}else auto(i)}}else r.idle=0;
+    if(!r.cur){r.idle=(r.idle||0)+1;if((i===1||c.auto)&&r.idle>25){auto(i)}}else r.idle=0;
   });
   render();
   if(Date.now()-lastSave>2000){lastSave=Date.now();try{localStorage.setItem('rumahmungil2',JSON.stringify(S))}catch(e){}}

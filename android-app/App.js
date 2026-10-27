@@ -1,137 +1,91 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {SafeAreaView, StatusBar, Text, View, TouchableOpacity, ActivityIndicator, Alert, StyleSheet} from 'react-native';
-import {pick, types, keepLocalCopy} from '@react-native-documents/picker';
+import React, {useState} from 'react';
+import {
+  SafeAreaView,
+  StatusBar,
+  Text,
+  View,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+} from 'react-native';
 import {WebView} from 'react-native-webview';
-import {initLlama} from 'llama.rn';
+
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'openai/gpt-oss-20b';
 
 export default function App() {
-  const [ctx, setCtx] = useState(null);
-  const [ready, setReady] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState('Pilih model model lokal 3 1B (.gguf). Game baru dibuka setelah AI lolos tes.');
-  const webRef = useRef(null);
-  const inferenceRef = useRef(false);
-  const ctxRef = useRef(null);
-
-  useEffect(() => () => {
-    if (ctxRef.current?.release) ctxRef.current.release();
-  }, []);
-
-  async function loadModel() {
-    if (inferenceRef.current) {
-      Alert.alert('AI sedang berpikir', 'Tunggu Sari menyelesaikan keputusan sebelum mengganti model.');
-      return;
-    }
-    let next = null;
-    try {
-      setBusy(true);
-      const picked = await pick({type: [types.allFiles]});
-      const file = Array.isArray(picked) ? picked[0] : picked;
-      if (!file?.name?.toLowerCase().endsWith('.gguf')) {
-        Alert.alert('Format model salah', 'Pilih file model dengan ekstensi .gguf.');
-        return;
-      }
-      setStatus('Menyalin model ke penyimpanan aplikasi…');
-      const copies = await keepLocalCopy({
-        files: [{uri: file.uri, fileName: file.name}],
-        destination: 'cachesDirectory',
-      });
-      const localCopy = copies?.[0];
-      if (localCopy?.status !== 'success' || !localCopy.localUri) {
-        throw new Error(localCopy?.copyError || 'Tidak bisa menyalin file model ke penyimpanan aplikasi.');
-      }
-      setStatus('Menyiapkan model lokal di HP…');
-      if (ctxRef.current?.release) {
-        await ctxRef.current.release();
-        ctxRef.current = null;
-      }
-      setCtx(null);
-      setReady(false);
-      next = await initLlama({
-        model: localCopy.localUri,
-        n_ctx: 2048,
-        n_threads: 4,
-        n_gpu_layers: 0,
-        use_mmap: true,
-      });
-      setStatus('Menguji inferensi lokal…');
-      const probe = await next.completion({
-        prompt: 'Balas tepat satu kata: SIAP',
-        n_predict: 12,
-        temperature: 0,
-      });
-      if (!probe?.text?.trim()) throw new Error('Model tidak menghasilkan respons pada tes awal.');
-      ctxRef.current = next;
-      setCtx(next);
-      next = null;
-      setReady(true);
-      setStatus('model lokal siap · Sari dikendalikan AI lokal · Budi dikendalikan pemain');
-    } catch (e) {
-      const code = String(e?.code || '').toLowerCase();
-      if (code.includes('cancel')) {
-        setStatus(ready ? 'model lokal tetap aktif.' : 'Pemilihan model dibatalkan. Pilih file .gguf untuk melanjutkan.');
-      } else {
-        setStatus('Model belum siap. Periksa file .gguf dan coba lagi.');
-        Alert.alert('model lokal belum siap', String(e?.message || e));
-      }
-    } finally {
-      if (next?.release) {
-        try { await next.release(); } catch (_) {}
-      }
-      setBusy(false);
-    }
-  }
+  const [keyInput, setKeyInput] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [gameVisible, setGameVisible] = useState(false);
+  const [status, setStatus] = useState('Masukkan API key Groq untuk memulai.');
 
   function sendDecision(result) {
     const js = 'window.__receiveSariAI(' + JSON.stringify(result) + '); true;';
-    webRef.current?.injectJavaScript(js);
+    webRef?.injectJavaScript?.(js);
   }
+
+  const [webRefValue, setWebRefValue] = useState(null);
+  const webRef = webRefValue;
 
   async function onGameMessage(event) {
     let message;
-    try { message = JSON.parse(event.nativeEvent.data); } catch (_) { return; }
-    if (message?.type !== 'sari_decision_request' && message?.type !== 'sari_dialogue_request') return;
-    const dialogueOnly = message.type === 'sari_dialogue_request';
-    if (inferenceRef.current) {
-      sendDecision({kind: 'busy'});
+    try {
+      message = JSON.parse(event.nativeEvent.data);
+    } catch (_) {
       return;
     }
-    if (!ctx) {
+    if (message?.type !== 'sari_decision_request' && message?.type !== 'sari_dialogue_request') return;
+
+    const dialogueOnly = message.type === 'sari_dialogue_request';
+    const context = message.context || {};
+    if (!apiKey) {
       sendDecision(dialogueOnly
         ? {kind: 'dialogue', dialogue: ''}
         : {kind: 'decision', action: null, dialogue: ''});
+      setStatus('API key Groq belum diisi.');
       return;
     }
 
-    inferenceRef.current = true;
+    setStatus('Sari sedang berpikir lewat Groq…');
     try {
-      const context = message.context || {};
-      const common =
-        'Kamu adalah Gemma, penulis ucapan Sari dalam game simulasi kehidupan Rumah Mungil. ' +
-        'Tulis ucapan yang terdengar alami, hangat, singkat, dan sesuai kepribadian serta situasi Sari. ' +
-        'Gunakan bahasa Indonesia sehari-hari. Maksimal satu kalimat dan satu baris, paling banyak 100 karakter. ' +
-        'Jangan menjelaskan proses berpikir, jangan menambahkan label pembicara, jangan memakai markdown, dan jangan menyalin mentah petunjuk situasi. ' +
-        'Petunjuk situasi hanya konteks, bukan teks yang harus diulang. ';
-      const prompt = dialogueOnly
-        ? common +
-          'Tugas: hasilkan hanya ucapan Sari untuk situasi ini. Balas hanya JSON valid dengan format {"dialogue":"ucapan singkat"}. ' +
-          'Jangan membuat aksi atau mengubah keadaan game.\nKONDISI: ' + JSON.stringify(context)
-        : common +
-          'Budi dikendalikan pemain; jangan mengambil alih Budi. Pilih tepat satu aksi dari daftar opsi yang diberikan, dengan mempertimbangkan kebutuhan, uang, waktu, lokasi, hubungan, dan permintaan Budi. ' +
-          'Jangan mengarang aksi di luar daftar. Sertakan satu ucapan Sari yang cocok dengan situasi dan aksi yang dipilih. ' +
-          'Balas hanya JSON valid dengan format {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.\nKONDISI: ' + JSON.stringify(context);
-      const result = await ctx.completion({
-        prompt,
-        n_predict: dialogueOnly ? 64 : 80,
-        temperature: 0.45,
+      const system = [
+        'Kamu adalah Sari, karakter teman serumah dalam game simulasi kehidupan Rumah Mungil.',
+        'Gunakan bahasa Indonesia sehari-hari yang hangat, alami, dan sesuai situasi.',
+        'Ucapan maksimal satu kalimat, satu baris, dan 100 karakter.',
+        'Jangan mengambil alih Budi, jangan mengarang keadaan game, dan jangan memakai markdown.',
+        dialogueOnly
+          ? 'Balas hanya JSON valid berbentuk {"dialogue":"ucapan singkat"}. Jangan memilih aksi.'
+          : 'Pilih tepat satu aksi dari context.options dengan memakai nilai key yang persis sama. Balas hanya JSON valid berbentuk {"action":"KUNCI_OPSI","dialogue":"ucapan singkat"}.';
+      ].join(' ');
+      const response = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            {role: 'system', content: system},
+            {role: 'user', content: JSON.stringify(context)},
+          ],
+          max_completion_tokens: dialogueOnly ? 80 : 120,
+          temperature: 0.4,
+          stream: false,
+        }),
       });
-      const raw = String(result?.text || '');
+      const data = await response.json();
+      if (!response.ok) {
+        const detail = data?.error?.message || ('HTTP ' + response.status);
+        throw new Error(detail);
+      }
+      const raw = String(data?.choices?.[0]?.message?.content || '');
       const start = raw.indexOf('{');
       const end = raw.lastIndexOf('}');
       if (start < 0 || end <= start) throw new Error('Respons AI bukan JSON.');
       const parsed = JSON.parse(raw.slice(start, end + 1));
       const dialogue = typeof parsed.dialogue === 'string'
-        ? parsed.dialogue.replace(/[\r\n]+/g, ' ').trim().slice(0, 100)
+        ? parsed.dialogue.replace(/[\\r\\n]+/g, ' ').trim().slice(0, 100)
         : '';
       if (dialogueOnly) {
         sendDecision({kind: 'dialogue', dialogue});
@@ -140,28 +94,69 @@ export default function App() {
         const action = options.some(item => item.key === parsed.action) ? parsed.action : null;
         sendDecision({kind: 'decision', action, dialogue});
       }
-    } catch (e) {
+      setStatus('Sari aktif · AI cloud Groq · Budi dikendalikan pemain');
+    } catch (error) {
+      const detail = String(error?.message || 'Gagal menghubungi Groq').slice(0, 100);
+      setStatus('Groq: ' + detail);
       sendDecision(dialogueOnly
         ? {kind: 'dialogue', dialogue: ''}
         : {kind: 'decision', action: null, dialogue: ''});
-    } finally {
-      inferenceRef.current = false;
     }
+  }
+
+  function activateKey() {
+    const key = keyInput.trim();
+    if (!key) {
+      setStatus('Masukkan API key Groq terlebih dahulu.');
+      return;
+    }
+    setApiKey(key);
+    setGameVisible(true);
+    setStatus('Terhubung ke AI cloud Groq.');
   }
 
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar backgroundColor="#24352b" barStyle="light-content" />
       <View style={styles.head}>
-        <Text style={styles.title}>Rumah Mungil</Text>
+        <Text style={styles.title}>Rumah Mungil · AI Cloud</Text>
         <Text style={styles.status}>{status}</Text>
-        <TouchableOpacity style={styles.btn} onPress={loadModel} disabled={busy}>
-          <Text style={styles.btnText}>{busy ? 'Memproses model…' : ready ? 'Ganti model GGUF' : 'Pilih model GGUF'}</Text>
-        </TouchableOpacity>
+        {gameVisible ? (
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={() => {
+              setKeyInput(apiKey);
+              setGameVisible(false);
+              setStatus('API key hanya disimpan sementara selama aplikasi terbuka.');
+            }}>
+            <Text style={styles.btnText}>Ganti API key Groq</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.keyPanel}>
+            <Text style={styles.help}>
+              Buat API key di console.groq.com. Key tidak ditanam di APK dan tidak disimpan permanen oleh aplikasi ini.
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={keyInput}
+              onChangeText={setKeyInput}
+              placeholder="Tempel API key Groq"
+              placeholderTextColor="#778078"
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              textContentType="password"
+              accessibilityLabel="API key Groq"
+            />
+            <TouchableOpacity style={styles.btn} onPress={activateKey}>
+              <Text style={styles.btnText}>Hubungkan dan mulai game</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-      {ready ? (
+      {gameVisible ? (
         <WebView
-          ref={webRef}
+          ref={setWebRefValue}
           style={styles.game}
           source={{uri: 'file:///android_asset/index.html'}}
           javaScriptEnabled
@@ -169,13 +164,15 @@ export default function App() {
           allowFileAccess
           originWhitelist={['*']}
           onMessage={onGameMessage}
-          onLoadEnd={() => webRef.current?.injectJavaScript('window.__sariAIReady=true; true;')}
+          onLoadEnd={() => webRefValue?.injectJavaScript('window.__sariAIReady=true; true;')}
         />
       ) : (
         <View style={styles.loader}>
-          {busy ? <ActivityIndicator size="large" color="#365c43" /> : <Text style={styles.emoji}>🏡</Text>}
-          <Text style={styles.loaderTitle}>{busy ? 'Menyiapkan teman serumah…' : 'Siapkan AI Sari'}</Text>
-          <Text style={styles.loaderText}>Pilih model model lokal 3 1B GGUF yang tersimpan di HP. Game hanya dibuka setelah model berhasil dimuat dan memberi respons tes. Model tidak dibundel ke APK.</Text>
+          <Text style={styles.emoji}>☁️</Text>
+          <Text style={styles.loaderTitle}>Sari memakai AI cloud</Text>
+          <Text style={styles.loaderText}>
+            Game memerlukan internet dan API key Groq. API key hanya berada di memori aplikasi selama sesi ini; masukkan key milikmu sendiri dan jangan bagikan kepada orang lain.
+          </Text>
         </View>
       )}
     </SafeAreaView>
@@ -187,6 +184,9 @@ const styles = StyleSheet.create({
   head: {backgroundColor: '#24352b', padding: 12},
   title: {fontSize: 20, fontWeight: 'bold', color: '#fff'},
   status: {color: '#fff', marginVertical: 6},
+  keyPanel: {gap: 10},
+  help: {color: '#fff', lineHeight: 20},
+  input: {backgroundColor: '#fff', color: '#18221b', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10},
   btn: {backgroundColor: '#365c43', padding: 10, borderRadius: 8, alignItems: 'center'},
   btnText: {color: '#fff', fontWeight: 'bold'},
   game: {flex: 1},

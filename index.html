@@ -312,7 +312,7 @@ function requestSariAI(){if(window.__sariAIThinking||!window.__sariAIReady||!win
 window.__receiveSariAI=function(result){if(result&&result.kind==='busy')return;window.__sariAIThinking=false;if(result&&result.kind==='dialogue'){const t=typeof result.dialogue==='string'?result.dialogue.replace(/[\r\n]+/g,' ').trim().slice(0,100):'';if(t){showBubble(1,t,2600);logLine(NM[1][0],CC[1],t);R[1].el.classList.add('talk');setTimeout(()=>R[1].el.classList.remove('talk'),2600)}R[1].idle=0;return}if(R[1].cur)return;if(!result||!sariActionAvailable(result.action)){window.__sariPendingRequest='';R[1].idle=0;auto(1);return}window.__sariPendingRequest='';R[1].idle=0;const t=typeof result.dialogue==='string'?result.dialogue.replace(/[\r\n]+/g,' ').trim().slice(0,100):'';if(t){showBubble(1,t,2600);logLine(NM[1][0],CC[1],t)}go(1,result.action)};
 
 function tick(){if(S.over)return;
-  const dt=.6*speed;S.t+=dt;const dn=Math.floor(S.t/1440);if(dn>(S.day|0))newDay(dn);petTick(dt);kidTick(dt);nbTick(dt);chatTick();balTick(dt);locTick(dt);if(++gt%20===0){goals();checkLongProgress()}
+  const dt=.6*speed;S.t+=dt;const rescueDay=Math.floor(S.t/1440);if(S.money<8&&S.rescueDay!==rescueDay){S.money+=30;S.rescueDay=rescueDay;evt('Bantuan darurat +Rp 30rb supaya bisa lanjut!');}const dn=Math.floor(S.t/1440);if(dn>(S.day|0))newDay(dn);petTick(dt);kidTick(dt);nbTick(dt);chatTick();balTick(dt);locTick(dt);if(++gt%20===0){goals();checkLongProgress()}
   S.ch.forEach((c,i)=>{
     const r=R[i],cu=r.cur,o=cu&&cu.phase==='do'?OB[cu.k]:null,d=o?Math.min(dt,cu.left):dt;
     let b=1;if(o){b=1+(UP[cu.k]?UP[cu.k][3]*(S.up[cu.k]|0):0);if((cu.k==='sofa'||cu.k==='meja')&&sofaMate(i)){b=2;if(i===0){S.rel=Math.min(100,S.rel+.08*d);S.fm=Math.min(100,S.fm+.06*d)}}}
@@ -432,7 +432,7 @@ $('#bp').onclick=()=>{const p=$('#pp');sfx('tap');if(p.style.display==='flex'){p
   L.forEach(([t,n])=>{const b=document.createElement('button');b.className='chip';b.textContent=n+(IMG[t]?' ✓':'');b.onclick=()=>{tgt=t;$('#pf').value='';$('#pf').click()};p.appendChild(b)});
   const r=document.createElement('button');r.className='chip';r.textContent='↺ Bawaan';r.onclick=()=>{IMG={};saveImg();skinChar(0);skinChar(1);p.style.display='none'};p.appendChild(r);p.style.display='flex'};
 $('#pf').onchange=e=>{const f=e.target.files[0];if(!f||tgt==null)return;loadImg(f,u=>{IMG[tgt]=u;saveImg();skinChar(0);skinChar(1);$('#pp').style.display='none';sfx('up')})};
-const DF=[{d:.75,i:1.8,b:.65},{d:1,i:1.35,b:.85},{d:1.35,i:1,b:1.4}];
+const DF=[{d:.6,i:2.2,b:.45},{d:.8,i:1.8,b:.65},{d:1,i:1.4,b:1}];
 const df=()=>DF[S.dif==null?1:S.dif];
 function difLabel(){$('#dif').textContent='Tingkat: '+['Normal','Menantang','Brutal'][S.dif==null?1:S.dif]}
 $('#dif').onclick=()=>{S.dif=((S.dif==null?1:S.dif)+1)%3;sfx('tap');difLabel()};
@@ -598,7 +598,7 @@ function locClose(h){[0,1].forEach(i=>{const rm=S.ch[i].rm|0;
 const pk=a=>a[Math.floor(Math.random()*a.length)];
 const price=k=>Math.round(UP[k][2]*[1,2.2,4][S.up[k]|0]);
 function evt(m){const e=$('#evt');e.textContent=m;e.classList.add('show');clearTimeout(evt.t);evt.t=setTimeout(()=>e.classList.remove('show'),4500)}
-function newDay(dn){S.day=dn;const bm=balDay();S.nb.rel=S.nb.rel.map((r,i)=>S.nb.v.some(x=>x.i===i)?r:Math.max(0,r-2));const lv=Object.values(S.up).reduce((a,b)=>a+(b|0),0),bill=Math.round((10+2*lv+(S.kid?8:0))*df().b);let m='';
+function newDay(dn){S.day=dn;const bm=balDay();S.nb.rel=S.nb.rel.map((r,i)=>S.nb.v.some(x=>x.i===i)?r:Math.max(0,r-2));const lv=Object.values(S.up).reduce((a,b)=>a+(b|0),0),bill=Math.round((4+lv+(S.kid?3:0))*df().b);let m='';
   if(S.money>=bill){S.money-=bill;m='Tagihan −Rp '+bill+'rb. '}else{S.money=0;S.ch.forEach(c=>c.n.hibur=Math.max(0,c.n.hibur-15));m='Tagihan menunggak, stres! '}
   const E=[['Bonus dari klien +Rp 40rb',()=>{S.money+=40}],['Tetangga mampir, sosial naik!',()=>S.ch.forEach(c=>c.n.sosial=Math.min(100,c.n.sosial+25))],['Listrik padam, hiburan turun.',()=>S.ch.forEach(c=>c.n.hibur=Math.max(0,c.n.hibur-12))],['Dapat kue gratis, perut kenyang!',()=>S.ch.forEach(c=>c.n.lapar=Math.min(100,c.n.lapar+30))],['Hujan deras, rumah terasa nyaman.',()=>S.ch.forEach(c=>c.n.energi=Math.min(100,c.n.energi+10))],
     ['Atap bocor, biaya perbaikan −Rp 30rb',()=>{S.money=Math.max(0,S.money-30)}],

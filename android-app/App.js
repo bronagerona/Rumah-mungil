@@ -88,12 +88,12 @@ export default function App() {
       if (startJson < 0 || endJson <= startJson) throw new Error('Respons AI bukan JSON lengkap.');
       const parsed = JSON.parse(raw.slice(startJson, endJson + 1));
       let dialogue = typeof parsed.dialogue === 'string'
-        ? parsed.dialogue.replace(/[\\r\\n]+/g, ' ').replace(/\\s+/g, ' ').trim()
+        ? parsed.dialogue.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
         : '';
       // Hindari menampilkan keluaran yang tampak seperti potongan kalimat atau kata acak.
-      if (dialogue.length > 80) dialogue = dialogue.slice(0, 80).replace(/\\s+\\S*$/, '').trim();
+      if (dialogue.length > 80) dialogue = dialogue.slice(0, 80).replace(/\s+\S*$/, '').trim();
       if (dialogue && !/[.!?…😊🙂😄❤️]$/.test(dialogue)) dialogue += '.';
-      if (dialogue && (dialogue.split(/\\s+/).length < 2 || !/[a-zA-ZÀ-ÿ]/.test(dialogue))) dialogue = '';
+      if (dialogue && (dialogue.split(/\s+/).length < 2 || !/[a-zA-ZÀ-ÿ]/.test(dialogue))) dialogue = '';
       if (dialogueOnly) {
         sendDecision({kind: 'dialogue', dialogue});
       } else {

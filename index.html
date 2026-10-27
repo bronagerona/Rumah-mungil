@@ -262,7 +262,7 @@ function pick(i){sel=i;sfx('tap');if(S.ch[i].rm>=0&&(S.ch[i].rm|0)!==view)setVie
 
 function place(i,x,y,dur){const e=R[i].el;e.style.setProperty('--d',dur+'ms');e.style.left=x+'%';e.style.top=y+'%';S.ch[i].x=x;S.ch[i].y=y}
 function showBubble(i,t,ms){const b=R[i].el.querySelector('.bub');b.textContent=t;b.classList.add('show');clearTimeout(R[i].bt);R[i].bt=setTimeout(()=>b.classList.remove('show'),ms||2200)}
-function isSariSystemMessage(t){return /^(Sedang di perjalanan|Belum buka|Waktunya tidak cukup|Uang tidak cukup|Terlalu jauh|Belum cukup dekat|Sudah tutup|Naik jabatan:|Berangkat ke |Ngobrol dengan |AI Sari belum siap|Sari dikendalikan AI lokal|Budi tetap kamu yang mengendalikan|Model belum siap)/i.test(String(t||''))}
+function isSariSystemMessage(t){return /^(Sedang di perjalanan|Belum buka|Waktunya tidak cukup|Uang tidak cukup|Terlalu jauh|Belum cukup dekat|Sudah tutup|Naik jabatan:|Berangkat ke |Ngobrol dengan |AI Sari belum siap|Sari dikendalikan AI cloud|Budi tetap kamu yang mengendalikan|Model belum siap)/i.test(String(t||''))}
 function say(i,t,ms){if(i===1&&!window.__sariInternalSpeak&&!isSariSystemMessage(t)){if(window.__sariAIReady)requestSariDialogue(String(t||''),ms);return}showBubble(i,t,ms)}
 const cost=k=>k==='kulkas'?Math.max(3,15-4*(S.up.kulkas|0)):(OB[k].gymfee&&S.up.gym?0:(OB[k].cost||0));
 const lvl=c=>LV.reduce((a,l,j)=>c.work>=l.h*60?j:a,0);
@@ -304,7 +304,7 @@ function renderLongProgress(){ensureLongProgress();const host=$('#longProgress')
 function checkLongProgress(){ensureLongProgress();let changed=false;for(const g of LONG_GOALS){if(!S.long.claimed[g.id]&&g.check()){S.long.claimed[g.id]=1;S.long.xp+=g.xp;S.money+=g.reward;changed=true;evt('🎉 Target tercapai: '+g.title+' · +Rp'+g.reward+'rb · +'+g.xp+' XP');sfx('up')}}if(changed){renderLongProgress();if($('#shop').classList.contains('open'))shop()}}
 
 
-/* ---------- jembatan keputusan AI lokal Sari ---------- */
+/* ---------- jembatan keputusan AI cloud Sari ---------- */
 function sariContext(event){const c=S.ch[1],roomNames=['rumah','taman','kantor','gym','kafe'];return {needs:c.n,money:Math.floor(S.money),hour:Math.floor((S.t%1440)/60),day:Math.floor(S.t/1440)+1,room:roomNames[c.rm|0]||'rumah',relationship:Math.floor(S.rel),family:Math.floor(S.fm),currentAction:R[1].cur&&OB[R[1].cur.k]?OB[R[1].cur.k].n:'santai',request:window.__sariPendingRequest||'',event:String(event||'').slice(0,140),history:typeof CL!=='undefined'?CL.slice(-4).map(l=>({speaker:l[0],text:l[2]})):[]}}
 function requestSariDialogue(cue,ms){if(!window.__sariAIReady||window.__sariAIThinking||!window.ReactNativeWebView||!window.ReactNativeWebView.postMessage)return false;window.__sariAIThinking=true;window.ReactNativeWebView.postMessage(JSON.stringify({type:'sari_dialogue_request',context:sariContext(cue)}));return true}
 function sariActionAvailable(k){const o=OB[k];if(!o)return false;const locked=o.need||(o.buy?k:'');return (o.r|0)===(S.ch[1].rm|0)&&(!locked||!!S.up[locked])&&S.money>=cost(k)}
@@ -621,7 +621,7 @@ function auto(i){const c=S.ch[i],n=c.n,hr=(S.t%1440)/60,k=Object.keys(n).sort((a
   if(t==='komputer'&&n.energi<30)t='kasur';
   if(!openNow(t))t=(hr>=22||hr<5)?'kasur':'sofa';R[i].idle=0;go(i,t)}
 function mood(c){const v=Object.values(c.n);return v.reduce((a,b)=>a+b,0)/v.length}
-$('#ba').onclick=()=>{sfx('tap');say(sel,sel===0?'Budi tetap kamu yang mengendalikan.':(window.__sariAIReady?'Sari dikendalikan AI lokal.':'AI Sari belum siap.'),2200)};
+$('#ba').onclick=()=>{sfx('tap');say(sel,sel===0?'Budi tetap kamu yang mengendalikan.':(window.__sariAIReady?'Sari dikendalikan AI cloud.':'AI Sari belum siap.'),2200)};
 $('#bg').onclick=()=>{const c=S.ch[sel],m=mood(c);sfx('tap');famUp(.8,'sapa');
   if(m>60){c.n.sosial=Math.min(100,c.n.sosial+12);say(sel,pk(['Hai! 😊','Halo juga~','Senang disapa!']),2200)}
   else if(m>35)say(sel,pk(['Hmm, iya?','Hai…']),2000);

@@ -92,7 +92,11 @@ export default function App() {
     try { message = JSON.parse(event.nativeEvent.data); } catch (_) { return; }
     if (message?.type !== 'sari_decision_request' && message?.type !== 'sari_dialogue_request') return;
     const dialogueOnly = message.type === 'sari_dialogue_request';
-    if (!ctx || inferenceRef.current) {
+    if (inferenceRef.current) {
+      sendDecision({kind: 'busy'});
+      return;
+    }
+    if (!ctx) {
       sendDecision(dialogueOnly
         ? {kind: 'dialogue', dialogue: ''}
         : {kind: 'decision', action: null, dialogue: ''});

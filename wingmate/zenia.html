@@ -69,6 +69,8 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <script>
 window.__zeniaDiag=function(stage,detail){try{if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage)window.ReactNativeWebView.postMessage(JSON.stringify({type:'zenia_diag',stage:String(stage||'DIAG'),detail:String(detail||'').slice(0,220)}))}catch(e){}};
 window.__zeniaDiag('SCRIPT_START','Inline game script started');
+window.addEventListener('error',function(e){window.__zeniaDiag('JS_ERROR',(e.message||'JavaScript error')+' @ '+(e.filename||'')+':'+(e.lineno||0));});
+window.addEventListener('unhandledrejection',function(e){window.__zeniaDiag('PROMISE_ERROR',e.reason&&e.reason.stack||e.reason||'Unhandled promise rejection');});
 const $=s=>document.querySelector(s),RI=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),RR=(a,b)=>a+Math.random()*(b-a),cl=(v,a,b)=>Math.max(a,Math.min(b,v)),pk=a=>a[Math.floor(Math.random()*a.length)];
 const TS=36,KEY='zeniaquest';
 let aiComment='',aiCommentUntil=0,aiLastRequest=0;

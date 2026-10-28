@@ -83,6 +83,7 @@ export default function App() {
   }
   async function onGameMessage(event){
     let msg;try{msg=JSON.parse(event.nativeEvent.data)}catch(_){return}
+    if(msg&&msg.type==='zenia_diag'){setStatus('Zenia diagnostik: '+String(msg.stage||'DIAG')+' — '+String(msg.detail||''));return}
     if(msg&&msg.type==='switch_model'){await activateMode(msg.mode==='chat'?'chat':'battle');return}
     if(msg&&msg.type==='zenia_comment_request'){
       if(selectedGame!=='zenia'||zeniaCommentBusyRef.current||swappingRef.current||inferenceRef.current||!modelsRef.current.chat)return;

@@ -1,4 +1,5 @@
 name: Build PROJECT WINGMATE Android APK
+run-name: Build Wingmate + Zenia dual-game APK
 on:
   workflow_dispatch:
   push:

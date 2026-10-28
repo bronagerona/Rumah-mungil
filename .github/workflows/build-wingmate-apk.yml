@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - shooter-rpg-smollm
+      - wingmate-zenia-dual-game
     paths:
       - "wingmate/**"
       - "wingmate-android/**"
@@ -41,6 +42,7 @@ jobs:
           cp wingmate-android/App.js WingmateNative/App.tsx
           mkdir -p WingmateNative/android/app/src/main/assets
           cp wingmate/index.html WingmateNative/android/app/src/main/assets/index.html
+          cp wingmate/zenia.html WingmateNative/android/app/src/main/assets/zenia.html
           cp wingmate/smollm-adapter.js WingmateNative/android/app/src/main/assets/smollm-adapter.js
       - name: Bundle JavaScript
         working-directory: WingmateNative

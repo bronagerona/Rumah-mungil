@@ -7,10 +7,10 @@ import {initLlama} from 'llama.rn';
 const ACTIONS = ['collect_drop','protect_player'];
 const GAME_KNOWLEDGE = 'Konteks singkat PROJECT WINGMATE: shooter vertikal 100 stage; Joni mengendalikan pesawat dengan sentuhan dan geseran jari, tembakan otomatis. Tiap stage perlu 50 kill sebelum boss; stage kelipatan 10 memiliki elite boss. Musuh menjatuhkan EXP dan GOLD. Upgrade senjata dan damage punya biaya berbeda yang meningkat. Pilot punya HP; jika habis, misi gagal. Wingmate adalah partner AI tanpa HP terpisah. Wing Pulse otomatis tiap 10 detik. Magnet Pulse dapat membersihkan peluru sekitar Joni, menarik drop, dan memberi damage area. Jangan menjelaskan detail teknis AI kecuali Joni bertanya. Jangan mengaku tahu status permainan langsung jika tidak diberikan.';
 export default function App() {
-  const [ready,setReady]=useState(false),[busy,setBusy]=useState(false);
+  const [ready,setReady]=useState(false),[busy,setBusy]=useState(false),[selectedGame,setSelectedGame]=useState('wingmate');
   const [status,setStatus]=useState('Pilih dua model GGUF: SmolLM untuk battle dan model pilihan untuk chat.');
   const webRef=useRef(null),ctxRef=useRef(null),inferenceRef=useRef(false),swappingRef=useRef(false);
-  const modelsRef=useRef({battle:null,chat:null}),activeModeRef=useRef(null),chatHistoryRef=useRef([]);
+  const modelsRef=useRef({battle:null,chat:null}),activeModeRef=useRef(null),chatHistoryRef=useRef([]),zeniaCommentBusyRef=useRef(false);
   useEffect(()=>()=>{if(ctxRef.current?.release)ctxRef.current.release()},[]);
   async function chooseLocalModel(role){
     const picked=await pick({type:[types.allFiles]});
@@ -84,6 +84,31 @@ export default function App() {
   async function onGameMessage(event){
     let msg;try{msg=JSON.parse(event.nativeEvent.data)}catch(_){return}
     if(msg&&msg.type==='switch_model'){await activateMode(msg.mode==='chat'?'chat':'battle');return}
+    if(msg&&msg.type==='zenia_comment_request'){
+      if(selectedGame!=='zenia'||zeniaCommentBusyRef.current||swappingRef.current||inferenceRef.current||!modelsRef.current.chat)return;
+      zeniaCommentBusyRef.current=true;
+      try{
+        if(activeModeRef.current!=='chat')await activateMode('chat');
+        if(activeModeRef.current!=='chat'||!ctxRef.current)throw new Error('Model chat belum siap');
+        inferenceRef.current=true;
+        const c=msg.context||{};
+        const eventNames={hurt:'Joni terkena serangan',low_hp:'HP Joni tinggal sedikit',kill:'Joni mengalahkan monster',boss:'boss muncul',boss_defeated:'boss dikalahkan'};
+        const context='Lokasi: '+String(c.map||'petualangan')+'; Level: '+Number(c.level||1)+'; HP: '+Number(c.hp||0)+'/'+Number(c.maxHp||0)+' ('+Number(c.hpPercent||0)+'%); Monster: '+String(msg.monster||'monster')+'; Musuh dekat: '+Number(c.nearby||0)+'; Boss dekat: '+(c.boss?'ya':'tidak')+'; Quest: '+String(c.quest||'belum ada');
+        const prompt='<start_of_turn>user\\nKamu companion serigala lucu di game RPG Zenia. Buat SATU komentar pendek, spontan, kocak, dan relevan dalam bahasa Indonesia santai untuk Joni. Maksimal satu kalimat pendek, 4-12 kata. Jangan mengarang aksi, jangan memberi instruksi gameplay, jangan keluarkan label atau markdown. Kamu hanya membuat komentar; tidak mengendalikan gerakan atau aksi game.\\nKejadian: '+(eventNames[String(msg.event)]||'ada kejadian di petualangan')+'. Konteks: '+context+'\\nTulis hanya komentarnya.<end_of_turn>\\n<start_of_turn>model\\n';
+        const result=await ctxRef.current.completion({prompt,n_predict:48,temperature:0.78,top_p:0.9});
+        let answer=String(result&&result.text||'').replace(/<end_of_turn>[\\s\\S]*$/i,'').replace(/<start_of_turn>[\\s\\S]*$/i,'').replace(/[\\r\\n]+/g,' ').replace(/^\\s*[\"'“”*#>\\-]+|[\"'“”*#>\\-]+\\s*$/g,'').trim();
+        if(/[a-zA-ZÀ-ÿ0-9]/.test(answer)){
+          if(answer.length>100)answer=answer.slice(0,97).replace(/\\s+\\S*$/,'')+'…';
+          webRef.current?.injectJavaScript('window.ZeniaLocalAI&&window.ZeniaLocalAI.receiveComment('+JSON.stringify(answer)+'); true;');
+        }
+      }catch(e){setStatus('Komentar Zenia gagal kali ini; gameplay tetap berjalan.');}
+      finally{
+        inferenceRef.current=false;
+        try{if(activeModeRef.current!=='battle')await activateMode('battle')}catch(_){}
+        zeniaCommentBusyRef.current=false;
+      }
+      return;
+    }
     if(msg&&msg.type==='wingmate_chat_request'){
       if(activeModeRef.current!=='chat'||!ctxRef.current||inferenceRef.current||swappingRef.current){sendNativeMessage({type:'chat_reply',error:'Model chat belum aktif. Buka chat lagi setelah model siap.'});return}
       inferenceRef.current=true;
@@ -142,13 +167,14 @@ export default function App() {
     <StatusBar backgroundColor="#080d20" barStyle="light-content"/>
     <View style={styles.head}>
       <Text style={styles.title}>PROJECT WINGMATE</Text><Text style={styles.status}>{status}</Text>
+      {ready?<View style={styles.gamePicker}><TouchableOpacity style={[styles.gameBtn,selectedGame==='wingmate'&&styles.gameBtnActive]} onPress={()=>setSelectedGame('wingmate')}><Text style={styles.btnText}>✈️ Wingmate</Text></TouchableOpacity><TouchableOpacity style={[styles.gameBtn,selectedGame==='zenia'&&styles.gameBtnActive]} onPress={()=>setSelectedGame('zenia')}><Text style={styles.btnText}>🐺 Zenia</Text></TouchableOpacity></View>:null}
       <TouchableOpacity style={styles.btn} onPress={chooseModels} disabled={busy}><Text style={styles.btnText}>{busy?'Menyiapkan model…':ready?'Ganti kedua model GGUF':'Pilih dua model GGUF'}</Text></TouchableOpacity>
     </View>
-    {ready?<WebView ref={webRef} style={styles.game} source={{uri:'file:///android_asset/index.html'}} javaScriptEnabled domStorageEnabled allowFileAccess originWhitelist={['*']} onMessage={onGameMessage} onLoadEnd={()=>webRef.current?.injectJavaScript('window.__wingmateAIReady=true; true;')}/>:<View style={styles.loader}>
+    {ready?<WebView key={selectedGame} ref={webRef} style={styles.game} source={{uri:selectedGame==='zenia'?'file:///android_asset/zenia.html':'file:///android_asset/index.html'}} javaScriptEnabled domStorageEnabled allowFileAccess originWhitelist={['*']} onMessage={onGameMessage} onLoadEnd={()=>{if(selectedGame==='wingmate')webRef.current?.injectJavaScript('window.__wingmateAIReady=true; true;')}}/>:<View style={styles.loader}>
       {busy?<ActivityIndicator size="large" color="#5ee7ff"/>:<Text style={styles.emoji}>✈️</Text>}
       <Text style={styles.loaderTitle}>{busy?'Menyiapkan dua model lokal…':'Aktifkan dua model Wingmate'}</Text>
       <Text style={styles.loaderText}>Pilih SmolLM2 GGUF untuk battle, lalu pilih model GGUF lain untuk chat. Kedua berkas disiapkan saat startup, tetapi hanya satu model dimuat ke RAM pada satu waktu. Game dibuka setelah model battle lulus tes inferensi.</Text>
     </View>}
   </SafeAreaView>
 }
-const styles=StyleSheet.create({root:{flex:1,backgroundColor:'#080d20'},head:{backgroundColor:'#101a32',padding:12},title:{fontSize:20,fontWeight:'bold',color:'#5ee7ff'},status:{color:'#e7efff',marginVertical:7},btn:{backgroundColor:'#13637b',padding:10,borderRadius:8,alignItems:'center'},btnText:{color:'#fff',fontWeight:'bold'},game:{flex:1},loader:{flex:1,alignItems:'center',justifyContent:'center',padding:28},emoji:{fontSize:48,marginBottom:12},loaderTitle:{fontSize:20,fontWeight:'bold',color:'#e7efff',marginBottom:10},loaderText:{textAlign:'center',color:'#c0cde8',lineHeight:22}});
+const styles=StyleSheet.create({root:{flex:1,backgroundColor:'#080d20'},head:{backgroundColor:'#101a32',padding:12},title:{fontSize:20,fontWeight:'bold',color:'#5ee7ff'},status:{color:'#e7efff',marginVertical:7},btn:{backgroundColor:'#13637b',padding:10,borderRadius:8,alignItems:'center'},btnText:{color:'#fff',fontWeight:'bold'},game:{flex:1},gamePicker:{flexDirection:'row',gap:8,marginBottom:8},gameBtn:{flex:1,backgroundColor:'#26324d',padding:9,borderRadius:8,alignItems:'center'},gameBtnActive:{backgroundColor:'#13637b',borderWidth:1,borderColor:'#5ee7ff'},loader:{flex:1,alignItems:'center',justifyContent:'center',padding:28},emoji:{fontSize:48,marginBottom:12},loaderTitle:{fontSize:20,fontWeight:'bold',color:'#e7efff',marginBottom:10},loaderText:{textAlign:'center',color:'#c0cde8',lineHeight:22}});

@@ -94,11 +94,24 @@ export default function App() {
         const c=msg.context||{};
         const eventNames={hurt:'Joni terkena serangan',low_hp:'HP Joni tinggal sedikit',kill:'Joni mengalahkan monster',boss:'boss muncul',boss_defeated:'boss dikalahkan'};
         const context='Lokasi: '+String(c.map||'petualangan')+'; Level: '+Number(c.level||1)+'; HP: '+Number(c.hp||0)+'/'+Number(c.maxHp||0)+' ('+Number(c.hpPercent||0)+'%); Monster: '+String(msg.monster||'monster')+'; Musuh dekat: '+Number(c.nearby||0)+'; Boss dekat: '+(c.boss?'ya':'tidak')+'; Quest: '+String(c.quest||'belum ada');
-        const prompt='<start_of_turn>user\\nKamu companion serigala lucu di game RPG Zenia. Buat SATU komentar pendek, spontan, kocak, dan relevan dalam bahasa Indonesia santai untuk Joni. Maksimal satu kalimat pendek, 4-12 kata. Jangan mengarang aksi, jangan memberi instruksi gameplay, jangan keluarkan label atau markdown. Kamu hanya membuat komentar; tidak mengendalikan gerakan atau aksi game.\\nKejadian: '+(eventNames[String(msg.event)]||'ada kejadian di petualangan')+'. Konteks: '+context+'\\nTulis hanya komentarnya.<end_of_turn>\\n<start_of_turn>model\\n';
+        const modelName=String(modelsRef.current.chat.name||'').toLowerCase();
+        const isGemma=/gemma/i.test(modelName);
+        const event=eventNames[String(msg.event)]||'ada kejadian di petualangan';
+        const instructions='Kamu companion serigala lucu di game RPG Zenia. Buat SATU komentar pendek, spontan, kocak, dan relevan dalam bahasa Indonesia santai untuk Joni. Maksimal satu kalimat pendek, 4-12 kata. Jangan mengarang aksi, jangan memberi instruksi gameplay, jangan keluarkan label atau markdown. Kamu hanya membuat komentar; tidak mengendalikan gerakan atau aksi game.';
+        const prompt=isGemma
+          ?'<start_of_turn>user\n'+instructions+'\nKejadian: '+event+'. Konteks: '+context+'\nTulis hanya komentarnya.<end_of_turn>\n<start_of_turn>model\n'
+          :'<|im_start|>system\n'+instructions+'\n<|im_end|>\n<|im_start|>user\nKejadian: '+event+'. Konteks: '+context+'\nTulis hanya komentarnya.<|im_end|>\n<|im_start|>assistant\n';
         const result=await ctxRef.current.completion({prompt,n_predict:48,temperature:0.78,top_p:0.9});
-        let answer=String(result&&result.text||'').replace(/<end_of_turn>[\\s\\S]*$/i,'').replace(/<start_of_turn>[\\s\\S]*$/i,'').replace(/[\\r\\n]+/g,' ').replace(/^\\s*[\"'“”*#>\\-]+|[\"'“”*#>\\-]+\\s*$/g,'').trim();
+        let answer=String(result&&result.text||'')
+          .replace(/<end_of_turn>[\s\S]*$/i,'')
+          .replace(/<\|im_end\|>[\s\S]*$/i,'')
+          .replace(/<start_of_turn>[\s\S]*$/i,'')
+          .replace(/<\|im_start\|>[\s\S]*$/i,'')
+          .replace(/[\r\n]+/g,' ')
+          .replace(/^\s*["'“”*#>\-]+|["'“”*#>\-]+\s*$/g,'')
+          .trim();
         if(/[a-zA-ZÀ-ÿ0-9]/.test(answer)){
-          if(answer.length>100)answer=answer.slice(0,97).replace(/\\s+\\S*$/,'')+'…';
+          if(answer.length>100)answer=answer.slice(0,97).replace(/\s+\S*$/,'')+'…';
           webRef.current?.injectJavaScript('window.ZeniaLocalAI&&window.ZeniaLocalAI.receiveComment('+JSON.stringify(answer)+'); true;');
         }
       }catch(e){setStatus('Komentar Zenia gagal kali ini; gameplay tetap berjalan.');}
